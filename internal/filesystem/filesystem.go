@@ -5,23 +5,9 @@ import (
 	"os"
 	"os/user"
 	"path/filepath"
-	"runtime"
 	"slices"
 	"strconv"
 	"syscall"
-
-	"golang.org/x/sys/unix"
-)
-
-// Linux filesystem ioctl constants
-// These are part of the stable Linux kernel ABI and are defined in linux/fs.h
-const (
-	// FS_IOC_GETFLAGS - Get file flags
-	fsIocGetFlags = 0x80086601
-	// FS_IOC_SETFLAGS - Set file flags
-	fsIocSetFlags = 0x40086602
-	// FS_IMMUTABLE_FL - Immutable file flag
-	fsImmutableFlag = 0x00000010
 )
 
 // FileSystem provides file system operations for the guard tool.
@@ -354,14 +340,7 @@ func (fs *FileSystem) SetImmutable(path string) error {
 		return nil
 	}
 
-	switch runtime.GOOS {
-	case "darwin":
-		return fs.setSystemImmutableMacOS(path)
-	case "linux":
-		return fs.setImmutableLinux(path)
-	default:
-		return fmt.Errorf("immutable flags not supported on %s", runtime.GOOS)
-	}
+	return fs.setImmutable(path)
 }
 
 // ClearImmutable removes the system-level immutable flag from a file.
@@ -374,131 +353,12 @@ func (fs *FileSystem) ClearImmutable(path string) error {
 		return nil
 	}
 
-	switch runtime.GOOS {
-	case "darwin":
-		return fs.clearSystemImmutableMacOS(path)
-	case "linux":
-		return fs.clearImmutableLinux(path)
-	default:
-		return fmt.Errorf("immutable flags not supported on %s", runtime.GOOS)
-	}
+	return fs.clearImmutable(path)
 }
 
 // IsImmutable checks if a file has the system-level immutable flag set.
 // macOS: Checks for SF_IMMUTABLE (schg)
 // Linux: Checks for FS_IMMUTABLE_FL (+i)
 func (fs *FileSystem) IsImmutable(path string) (bool, error) {
-	switch runtime.GOOS {
-	case "darwin":
-		return fs.isSystemImmutableMacOS(path)
-	case "linux":
-		return fs.isImmutableLinux(path)
-	default:
-		return false, fmt.Errorf("immutable flags not supported on %s", runtime.GOOS)
-	}
-}
-
-// setSystemImmutableMacOS sets SF_IMMUTABLE flag on macOS (schg)
-func (fs *FileSystem) setSystemImmutableMacOS(path string) error {
-	// Get current flags to preserve them
-	var stat unix.Stat_t
-	if err := unix.Stat(path, &stat); err != nil {
-		return fmt.Errorf("failed to get file flags for %s: %w", path, err)
-	}
-
-	// Set SF_IMMUTABLE flag while preserving existing flags
-	newFlags := stat.Flags | unix.SF_IMMUTABLE
-	if err := unix.Chflags(path, int(newFlags)); err != nil {
-		return fmt.Errorf("failed to set system immutable flag for file %s: %w", path, err)
-	}
-	return nil
-}
-
-// clearSystemImmutableMacOS clears SF_IMMUTABLE flag on macOS (chflags noschg)
-func (fs *FileSystem) clearSystemImmutableMacOS(path string) error {
-	// Get current flags
-	var stat unix.Stat_t
-	if err := unix.Stat(path, &stat); err != nil {
-		return fmt.Errorf("failed to get file flags for %s: %w", path, err)
-	}
-
-	// Clear SF_IMMUTABLE flag
-	newFlags := stat.Flags &^ unix.SF_IMMUTABLE
-	if err := unix.Chflags(path, int(newFlags)); err != nil {
-		return fmt.Errorf("failed to clear system immutable flag for file %s: %w", path, err)
-	}
-	return nil
-}
-
-// isSystemImmutableMacOS checks if SF_IMMUTABLE flag is set on macOS
-func (fs *FileSystem) isSystemImmutableMacOS(path string) (bool, error) {
-	var stat unix.Stat_t
-	if err := unix.Stat(path, &stat); err != nil {
-		return false, fmt.Errorf("failed to get file flags for %s: %w", path, err)
-	}
-
-	return (stat.Flags & unix.SF_IMMUTABLE) != 0, nil
-}
-
-// setImmutableLinux sets FS_IMMUTABLE_FL flag on Linux (+i)
-func (fs *FileSystem) setImmutableLinux(path string) error {
-	f, err := os.OpenFile(path, os.O_RDONLY, 0)
-	if err != nil {
-		return fmt.Errorf("failed to open file %s for immutable flag: %w", path, err)
-	}
-	defer f.Close()
-
-	// Get current flags
-	flags, err := unix.IoctlGetInt(int(f.Fd()), fsIocGetFlags)
-	if err != nil {
-		return fmt.Errorf("failed to get file flags for %s: %w", path, err)
-	}
-
-	// Set FS_IMMUTABLE_FL flag
-	flags |= fsImmutableFlag
-	if err := unix.IoctlSetInt(int(f.Fd()), fsIocSetFlags, flags); err != nil {
-		return fmt.Errorf("failed to set immutable flag for file %s: %w", path, err)
-	}
-
-	return nil
-}
-
-// clearImmutableLinux clears FS_IMMUTABLE_FL flag on Linux (chattr -i)
-func (fs *FileSystem) clearImmutableLinux(path string) error {
-	f, err := os.OpenFile(path, os.O_RDONLY, 0)
-	if err != nil {
-		return fmt.Errorf("failed to open file %s for immutable flag: %w", path, err)
-	}
-	defer f.Close()
-
-	// Get current flags
-	flags, err := unix.IoctlGetInt(int(f.Fd()), fsIocGetFlags)
-	if err != nil {
-		return fmt.Errorf("failed to get file flags for %s: %w", path, err)
-	}
-
-	// Clear FS_IMMUTABLE_FL flag
-	flags &^= fsImmutableFlag
-	if err := unix.IoctlSetInt(int(f.Fd()), fsIocSetFlags, flags); err != nil {
-		return fmt.Errorf("failed to clear immutable flag for file %s: %w", path, err)
-	}
-
-	return nil
-}
-
-// isImmutableLinux checks if FS_IMMUTABLE_FL flag is set on Linux
-func (fs *FileSystem) isImmutableLinux(path string) (bool, error) {
-	f, err := os.OpenFile(path, os.O_RDONLY, 0)
-	if err != nil {
-		return false, fmt.Errorf("failed to open file %s for immutable flag check: %w", path, err)
-	}
-	defer f.Close()
-
-	// Get current flags
-	flags, err := unix.IoctlGetInt(int(f.Fd()), fsIocGetFlags)
-	if err != nil {
-		return false, fmt.Errorf("failed to get file flags for %s: %w", path, err)
-	}
-
-	return (flags & fsImmutableFlag) != 0, nil
+	return fs.isImmutable(path)
 }
