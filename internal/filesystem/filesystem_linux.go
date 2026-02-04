@@ -29,14 +29,14 @@ func (fs *FileSystem) setImmutable(path string) error {
 	defer f.Close()
 
 	// Get current flags
-	flags, err := unix.IoctlGetInt(int(f.Fd()), fsIocGetFlags)
+	flags, err := unix.IoctlGetUint32(int(f.Fd()), fsIocGetFlags)
 	if err != nil {
 		return fmt.Errorf("failed to get file flags for %s: %w", path, err)
 	}
 
 	// Set FS_IMMUTABLE_FL flag
-	flags |= fsImmutableFlag
-	if err := unix.IoctlSetInt(int(f.Fd()), fsIocSetFlags, flags); err != nil {
+	flags |= uint32(fsImmutableFlag)
+	if err := unix.IoctlSetPointerInt(int(f.Fd()), fsIocSetFlags, int(flags)); err != nil {
 		return fmt.Errorf("failed to set immutable flag for file %s: %w", path, err)
 	}
 
@@ -52,14 +52,14 @@ func (fs *FileSystem) clearImmutable(path string) error {
 	defer f.Close()
 
 	// Get current flags
-	flags, err := unix.IoctlGetInt(int(f.Fd()), fsIocGetFlags)
+	flags, err := unix.IoctlGetUint32(int(f.Fd()), fsIocGetFlags)
 	if err != nil {
 		return fmt.Errorf("failed to get file flags for %s: %w", path, err)
 	}
 
 	// Clear FS_IMMUTABLE_FL flag
-	flags &^= fsImmutableFlag
-	if err := unix.IoctlSetInt(int(f.Fd()), fsIocSetFlags, flags); err != nil {
+	flags &^= uint32(fsImmutableFlag)
+	if err := unix.IoctlSetPointerInt(int(f.Fd()), fsIocSetFlags, int(flags)); err != nil {
 		return fmt.Errorf("failed to clear immutable flag for file %s: %w", path, err)
 	}
 
@@ -75,10 +75,10 @@ func (fs *FileSystem) isImmutable(path string) (bool, error) {
 	defer f.Close()
 
 	// Get current flags
-	flags, err := unix.IoctlGetInt(int(f.Fd()), fsIocGetFlags)
+	flags, err := unix.IoctlGetUint32(int(f.Fd()), fsIocGetFlags)
 	if err != nil {
 		return false, fmt.Errorf("failed to get file flags for %s: %w", path, err)
 	}
 
-	return (flags & fsImmutableFlag) != 0, nil
+	return (flags & uint32(fsImmutableFlag)) != 0, nil
 }
