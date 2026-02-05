@@ -40,7 +40,10 @@ When no names are specified, all registered items are shown.`,
 			if len(args) == 0 {
 				// Show all files and collections
 				showAllFiles(mgr)
-				showAllCollections(mgr)
+				if err := showAllCollections(mgr); err != nil {
+					fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+					os.Exit(1)
+				}
 			} else {
 				// Use auto-detection to resolve arguments
 				files, folders, collections, err := mgr.ResolveArguments(args)
@@ -64,7 +67,10 @@ When no names are specified, all registered items are shown.`,
 
 				// Show collections
 				if len(collections) > 0 {
-					showSpecificCollections(mgr, collections)
+					if err := showSpecificCollections(mgr, collections); err != nil {
+						fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+						os.Exit(1)
+					}
 				}
 			}
 
@@ -127,11 +133,10 @@ func showSpecificFiles(mgr *manager.Manager, files []string) {
 }
 
 // showAllCollections shows all collections (summary view)
-func showAllCollections(mgr *manager.Manager) {
+func showAllCollections(mgr *manager.Manager) error {
 	collections, summary, err := mgr.ListCollections(nil, false)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-		return
+		return err
 	}
 
 	for _, info := range collections {
@@ -145,14 +150,15 @@ func showAllCollections(mgr *manager.Manager) {
 	if summary != nil {
 		fmt.Printf("\n%d collection(s) total: %d guarded, %d unguarded\n", summary.Total, summary.Guarded, summary.Unguarded)
 	}
+
+	return nil
 }
 
 // showSpecificCollections shows specific collections (detailed view)
-func showSpecificCollections(mgr *manager.Manager, collections []string) {
+func showSpecificCollections(mgr *manager.Manager, collections []string) error {
 	infos, _, err := mgr.ListCollections(collections, true)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-		return
+		return err
 	}
 
 	for _, info := range infos {
@@ -169,6 +175,8 @@ func showSpecificCollections(mgr *manager.Manager, collections []string) {
 			fmt.Printf("  %s %s\n", fileGuardFlag, file.Path)
 		}
 	}
+
+	return nil
 }
 
 // newShowFileCmd creates the "show file" subcommand.
@@ -255,9 +263,15 @@ individual files in those collections are also listed.`,
 			}
 
 			if len(args) == 0 {
-				showAllCollections(mgr)
+				if err := showAllCollections(mgr); err != nil {
+					fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+					os.Exit(1)
+				}
 			} else {
-				showSpecificCollections(mgr, args)
+				if err := showSpecificCollections(mgr, args); err != nil {
+					fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+					os.Exit(1)
+				}
 			}
 
 			// Print warnings

@@ -305,6 +305,7 @@ states, an error will be returned and no changes will be made (conflict detectio
 			}
 
 			// Print success messages - files first (sorted), then collection summary
+			statusByName := make(map[string]manager.CollectionStatus, len(args))
 			for _, collectionName := range args {
 				status, err := mgr.GetCollectionStatus(collectionName, true)
 				if err != nil {
@@ -314,6 +315,7 @@ states, an error will be returned and no changes will be made (conflict detectio
 				if !status.Exists {
 					continue
 				}
+				statusByName[collectionName] = status
 				if len(status.Files) == 0 {
 					continue
 				}
@@ -336,12 +338,8 @@ states, an error will be returned and no changes will be made (conflict detectio
 			}
 			fmt.Println()
 			for _, collectionName := range args {
-				status, err := mgr.GetCollectionStatus(collectionName, false)
-				if err != nil {
-					fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-					os.Exit(1)
-				}
-				if !status.Exists {
+				status, ok := statusByName[collectionName]
+				if !ok || !status.Exists {
 					continue
 				}
 				if status.Guard {

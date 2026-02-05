@@ -280,6 +280,7 @@ Empty or non-existent collections will generate warnings.`,
 			}
 
 			// Print success messages - files first (sorted), then collection summary
+			statusByName := make(map[string]manager.CollectionStatus, len(args))
 			for _, collectionName := range args {
 				// Check if collection exists in registry
 				status, err := mgr.GetCollectionStatus(collectionName, true)
@@ -290,6 +291,7 @@ Empty or non-existent collections will generate warnings.`,
 				if !status.Exists {
 					continue // Collection doesn't exist, warning already printed
 				}
+				statusByName[collectionName] = status
 
 				// Get files from collection
 				if len(status.Files) == 0 {
@@ -309,12 +311,8 @@ Empty or non-existent collections will generate warnings.`,
 			}
 			fmt.Println()
 			for _, collectionName := range args {
-				status, err := mgr.GetCollectionStatus(collectionName, true)
-				if err != nil {
-					fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-					os.Exit(1)
-				}
-				if !status.Exists {
+				status, ok := statusByName[collectionName]
+				if !ok || !status.Exists {
 					continue
 				}
 				// Only print collection success if it has files
