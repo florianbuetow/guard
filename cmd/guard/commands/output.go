@@ -25,3 +25,14 @@ func printErrors(errors []string) {
 		}
 	}
 }
+
+func displayPath(mgr *manager.Manager, path string) string {
+	if mgr == nil {
+		return path
+	}
+	status, err := mgr.GetFileStatus(path)
+	if err != nil || status.Path == "" {
+		return path
+	}
+	return status.Path
+}

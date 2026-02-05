@@ -3,6 +3,7 @@ package manager
 import (
 	"errors"
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/florianbuetow/guard/internal/filesystem"
@@ -252,141 +253,19 @@ func (m *Manager) ToggleCollections(names []string) error {
 	}
 
 	// Check all collections exist
-	for _, name := range names {
-		if !m.security.IsRegisteredCollection(name) {
-			m.AddWarning(NewWarning(WarningCollectionNotFound, "", name))
-		}
-	}
+	m.warnMissingCollections(names)
 
 	// Conflict detection (Requirement 3.5)
 	// Conflict occurs only when: (1) multiple collections, (2) share files, AND (3) different guard states
-	if len(names) > 1 {
-		// Get guard states for each collection
-		collectionGuardStates := make(map[string]bool)
-		for _, name := range names {
-			if !m.security.IsRegisteredCollection(name) {
-				continue
-			}
-			guard, err := m.security.GetRegisteredCollectionGuard(name)
-			if err != nil {
-				m.AddError(fmt.Sprintf("Error: Failed to get guard state for collection %s: %v", name, err))
-				continue
-			}
-			collectionGuardStates[name] = guard
-		}
-
-		// Find files that appear in multiple collections
-		fileToCollections := make(map[string][]string)
-		for _, name := range names {
-			if !m.security.IsRegisteredCollection(name) {
-				continue
-			}
-			files, err := m.security.GetRegisteredCollectionFiles(name)
-			if err != nil {
-				continue
-			}
-
-			for _, file := range files {
-				fileToCollections[file] = append(fileToCollections[file], name)
-			}
-		}
-
-		// Check for conflicts: shared files in collections with different guard states
-		var conflictingFiles []string
-		for file, collections := range fileToCollections {
-			if len(collections) < 2 {
-				continue // File not shared
-			}
-
-			// Check if collections have different guard states
-			var guardStates []bool
-			for _, coll := range collections {
-				if guard, exists := collectionGuardStates[coll]; exists {
-					guardStates = append(guardStates, guard)
-				}
-			}
-
-			// Check if guard states differ
-			if len(guardStates) >= 2 {
-				firstState := guardStates[0]
-				hasDifferentStates := false
-				for _, state := range guardStates[1:] {
-					if state != firstState {
-						hasDifferentStates = true
-						break
-					}
-				}
-
-				if hasDifferentStates {
-					conflictingFiles = append(conflictingFiles, file)
-				}
-			}
-		}
-
-		// If conflicts found, error and exit without changing state
-		if len(conflictingFiles) > 0 {
-			// Build multi-line error message (Issue 6)
-			var errMsg strings.Builder
-			errMsg.WriteString("cannot toggle collections that share files with different guard states\n")
-
-			// Line 2: List conflicting files
-			errMsg.WriteString("Conflicting files: ")
-			errMsg.WriteString(strings.Join(conflictingFiles, ", "))
-			errMsg.WriteString("\n")
-
-			// Lines 3+: Show which collections conflict for each file
-			for _, filePath := range conflictingFiles {
-				collections := fileToCollections[filePath]
-
-				var collParts []string
-				for _, collName := range collections {
-					if guardState, exists := collectionGuardStates[collName]; exists {
-						collParts = append(collParts, fmt.Sprintf("%s (guard: %v)", collName, guardState))
-					}
-				}
-
-				if len(collParts) >= 2 {
-					lastIdx := len(collParts) - 1
-					collList := strings.Join(collParts[:lastIdx], ", ")
-					if len(collParts) > 2 {
-						collList += ","
-					}
-					collList += " and " + collParts[lastIdx]
-					errMsg.WriteString(fmt.Sprintf("Collections %s both contain %s\n", collList, filePath))
-				}
-			}
-
-			return errors.New(strings.TrimSuffix(errMsg.String(), "\n"))
-		}
+	if err := m.checkToggleCollectionConflicts(names); err != nil {
+		return err
 	}
 
 	// Collect all files from all collections (deduplicated)
-	allFiles := make(map[string]bool)
-	for _, name := range names {
-		if !m.security.IsRegisteredCollection(name) {
-			continue
-		}
-
-		files, err := m.security.GetRegisteredCollectionFiles(name)
-		if err != nil {
-			m.AddError(fmt.Sprintf("Error: Failed to get files from collection %s: %v", name, err))
-			continue
-		}
-
-		if len(files) == 0 {
-			m.AddWarning(NewWarning(WarningCollectionEmpty, "", name))
-		}
-
-		for _, file := range files {
-			allFiles[file] = true
-		}
-	}
+	allFiles := m.collectCollectionFiles(names)
 
 	// Check which files exist
-	filePaths := make([]string, 0, len(allFiles))
-	for file := range allFiles {
-		filePaths = append(filePaths, file)
-	}
+	filePaths := mapKeys(allFiles)
 	existing, missing := m.fs.CheckFilesExist(filePaths)
 
 	// Warn about missing files and suggest cleanup
@@ -396,7 +275,173 @@ func (m *Manager) ToggleCollections(names []string) error {
 
 	// Determine the new collection guard state (all collections have the same state due to conflict validation)
 	// We get the current state of the first valid collection and toggle it
-	var newCollectionGuardState bool
+	newCollectionGuardState, ok := m.nextCollectionGuardState(names)
+	if ok {
+		// Toggle guard for all existing files - sync ALL files to the collection's new guard state
+		m.syncFilesToCollectionGuard(existing, newCollectionGuardState)
+	}
+
+	// Toggle guard for all collections
+	m.toggleCollectionGuardFlags(names)
+
+	if err := m.SaveRegistry(); err != nil {
+		return fmt.Errorf("failed to save registry: %w", err)
+	}
+
+	return nil
+}
+
+func (m *Manager) warnMissingCollections(names []string) {
+	for _, name := range names {
+		if !m.security.IsRegisteredCollection(name) {
+			m.AddWarning(NewWarning(WarningCollectionNotFound, "", name))
+		}
+	}
+}
+
+func (m *Manager) checkToggleCollectionConflicts(names []string) error {
+	if len(names) <= 1 {
+		return nil
+	}
+
+	collectionGuardStates := m.collectCollectionGuardStates(names)
+	fileToCollections := m.mapFilesToCollections(names)
+	conflictingFiles := findConflictingFiles(fileToCollections, collectionGuardStates)
+	if len(conflictingFiles) == 0 {
+		return nil
+	}
+
+	return buildCollectionConflictError(conflictingFiles, fileToCollections, collectionGuardStates)
+}
+
+func (m *Manager) collectCollectionGuardStates(names []string) map[string]bool {
+	states := make(map[string]bool)
+	for _, name := range names {
+		if !m.security.IsRegisteredCollection(name) {
+			continue
+		}
+		guard, err := m.security.GetRegisteredCollectionGuard(name)
+		if err != nil {
+			m.AddError(fmt.Sprintf("Error: Failed to get guard state for collection %s: %v", name, err))
+			continue
+		}
+		states[name] = guard
+	}
+	return states
+}
+
+func (m *Manager) mapFilesToCollections(names []string) map[string][]string {
+	fileToCollections := make(map[string][]string)
+	for _, name := range names {
+		if !m.security.IsRegisteredCollection(name) {
+			continue
+		}
+		files, err := m.security.GetRegisteredCollectionFiles(name)
+		if err != nil {
+			continue
+		}
+		for _, file := range files {
+			fileToCollections[file] = append(fileToCollections[file], name)
+		}
+	}
+	return fileToCollections
+}
+
+func findConflictingFiles(fileToCollections map[string][]string, collectionGuardStates map[string]bool) []string {
+	var conflictingFiles []string
+	for file, collections := range fileToCollections {
+		if len(collections) < 2 {
+			continue
+		}
+		if collectionsHaveMixedStates(collections, collectionGuardStates) {
+			conflictingFiles = append(conflictingFiles, file)
+		}
+	}
+	return conflictingFiles
+}
+
+func collectionsHaveMixedStates(collections []string, collectionGuardStates map[string]bool) bool {
+	var firstState *bool
+	for _, coll := range collections {
+		guard, exists := collectionGuardStates[coll]
+		if !exists {
+			continue
+		}
+		if firstState == nil {
+			firstState = &guard
+			continue
+		}
+		if guard != *firstState {
+			return true
+		}
+	}
+	return false
+}
+
+func buildCollectionConflictError(conflictingFiles []string, fileToCollections map[string][]string, collectionGuardStates map[string]bool) error {
+	var errMsg strings.Builder
+	errMsg.WriteString("cannot toggle collections that share files with different guard states\n")
+	errMsg.WriteString("Conflicting files: ")
+	errMsg.WriteString(strings.Join(conflictingFiles, ", "))
+	errMsg.WriteString("\n")
+
+	for _, filePath := range conflictingFiles {
+		collections := fileToCollections[filePath]
+		collParts := buildCollectionStateParts(collections, collectionGuardStates)
+		if len(collParts) < 2 {
+			continue
+		}
+		collList := formatCollectionList(collParts)
+		errMsg.WriteString(fmt.Sprintf("Collections %s both contain %s\n", collList, filePath))
+	}
+
+	return errors.New(strings.TrimSuffix(errMsg.String(), "\n"))
+}
+
+func buildCollectionStateParts(collections []string, collectionGuardStates map[string]bool) []string {
+	var collParts []string
+	for _, collName := range collections {
+		if guardState, exists := collectionGuardStates[collName]; exists {
+			collParts = append(collParts, fmt.Sprintf("%s (guard: %v)", collName, guardState))
+		}
+	}
+	return collParts
+}
+
+func formatCollectionList(collParts []string) string {
+	if len(collParts) == 1 {
+		return collParts[0]
+	}
+	lastIdx := len(collParts) - 1
+	collList := strings.Join(collParts[:lastIdx], ", ")
+	if len(collParts) > 2 {
+		collList += ","
+	}
+	return collList + " and " + collParts[lastIdx]
+}
+
+func (m *Manager) collectCollectionFiles(names []string) map[string]bool {
+	allFiles := make(map[string]bool)
+	for _, name := range names {
+		if !m.security.IsRegisteredCollection(name) {
+			continue
+		}
+		files, err := m.security.GetRegisteredCollectionFiles(name)
+		if err != nil {
+			m.AddError(fmt.Sprintf("Error: Failed to get files from collection %s: %v", name, err))
+			continue
+		}
+		if len(files) == 0 {
+			m.AddWarning(NewWarning(WarningCollectionEmpty, "", name))
+		}
+		for _, file := range files {
+			allFiles[file] = true
+		}
+	}
+	return allFiles
+}
+
+func (m *Manager) nextCollectionGuardState(names []string) (bool, bool) {
 	for _, name := range names {
 		if !m.security.IsRegisteredCollection(name) {
 			continue
@@ -405,70 +450,82 @@ func (m *Manager) ToggleCollections(names []string) error {
 		if err != nil {
 			continue
 		}
-		newCollectionGuardState = !currentGuard
-		break
+		return !currentGuard, true
 	}
+	return false, false
+}
 
-	// Toggle guard for all existing files - sync ALL files to the collection's new guard state
+func (m *Manager) syncFilesToCollectionGuard(existing []string, newCollectionGuardState bool) {
 	for _, path := range existing {
 		if !m.security.IsRegisteredFile(path) {
 			continue
 		}
+		m.applyGuardStateToFile(path, newCollectionGuardState)
+	}
+}
 
-		// Get current file config (needed for restore permissions)
-		owner, group, mode, _, err := m.security.GetRegisteredFileConfig(path)
-		if err != nil {
-			m.AddError(fmt.Sprintf("Error: Failed to get config for %s: %v", path, err))
-			continue
+func (m *Manager) applyGuardStateToFile(path string, newGuardState bool) {
+	owner, group, mode, _, err := m.security.GetRegisteredFileConfig(path)
+	if err != nil {
+		m.AddError(fmt.Sprintf("Error: Failed to get config for %s: %v", path, err))
+		return
+	}
+
+	if newGuardState {
+		if !m.enableGuardForFile(path) {
+			return
 		}
-
-		// Sync file to collection's new guard state (not individual toggle)
-		newGuardState := newCollectionGuardState
-
-		if newGuardState {
-			// Enable guard: apply guard permissions, then set immutable
-			guardMode := m.security.GetDefaultFileMode()
-			guardOwner := m.security.GetDefaultFileOwner()
-			guardGroup := m.security.GetDefaultFileGroup()
-
-			if err := m.fs.ApplyPermissions(path, guardMode, guardOwner, guardGroup); err != nil {
-				m.AddError(fmt.Sprintf("Error: Failed to enable guard for %s: %v", path, err))
-				continue
-			}
-
-			// Set immutable flag (auto-skips if not root)
-			if err := m.fs.SetImmutable(path); err != nil {
-				if errors.Is(err, filesystem.ErrRootRequired) {
-					m.AddWarning(NewWarning(WarningGeneric, fmt.Sprintf("Setting immutable flag requires root privileges (sudo) for file %s - skipping", path)))
-				} else {
-					m.AddError(fmt.Sprintf("Error: Failed to set immutable flag for %s: %v", path, err))
-				}
-			}
-		} else {
-			// Disable guard: clear immutable first, then restore permissions
-			if err := m.fs.ClearImmutable(path); err != nil {
-				if errors.Is(err, filesystem.ErrRootRequired) {
-					m.AddWarning(NewWarning(WarningGeneric, fmt.Sprintf("Clearing immutable flag requires root privileges (sudo) for file %s - skipping", path)))
-				} else {
-					m.AddError(fmt.Sprintf("Error: Failed to clear immutable flag for %s: %v", path, err))
-					continue
-				}
-			}
-
-			if err := m.fs.RestorePermissions(path, mode, owner, group); err != nil {
-				m.AddError(fmt.Sprintf("Error: Failed to disable guard for %s: %v", path, err))
-				continue
-			}
-		}
-
-		// Set new guard flag
-		if err := m.security.SetRegisteredFileGuard(path, newGuardState); err != nil {
-			m.AddError(fmt.Sprintf("Error: Failed to set guard flag for %s: %v", path, err))
-			continue
+	} else {
+		if !m.disableGuardForFile(path, mode, owner, group) {
+			return
 		}
 	}
 
-	// Toggle guard for all collections
+	if err := m.security.SetRegisteredFileGuard(path, newGuardState); err != nil {
+		m.AddError(fmt.Sprintf("Error: Failed to set guard flag for %s: %v", path, err))
+	}
+}
+
+func (m *Manager) enableGuardForFile(path string) bool {
+	guardMode := m.security.GetDefaultFileMode()
+	guardOwner := m.security.GetDefaultFileOwner()
+	guardGroup := m.security.GetDefaultFileGroup()
+
+	if err := m.fs.ApplyPermissions(path, guardMode, guardOwner, guardGroup); err != nil {
+		m.AddError(fmt.Sprintf("Error: Failed to enable guard for %s: %v", path, err))
+		return false
+	}
+
+	if err := m.fs.SetImmutable(path); err != nil {
+		if errors.Is(err, filesystem.ErrRootRequired) {
+			m.AddWarning(NewWarning(WarningGeneric, fmt.Sprintf("Setting immutable flag requires root privileges (sudo) for file %s - skipping", path)))
+		} else {
+			m.AddError(fmt.Sprintf("Error: Failed to set immutable flag for %s: %v", path, err))
+		}
+	}
+
+	return true
+}
+
+func (m *Manager) disableGuardForFile(path string, mode os.FileMode, owner, group string) bool {
+	if err := m.fs.ClearImmutable(path); err != nil {
+		if errors.Is(err, filesystem.ErrRootRequired) {
+			m.AddWarning(NewWarning(WarningGeneric, fmt.Sprintf("Clearing immutable flag requires root privileges (sudo) for file %s - skipping", path)))
+		} else {
+			m.AddError(fmt.Sprintf("Error: Failed to clear immutable flag for %s: %v", path, err))
+			return false
+		}
+	}
+
+	if err := m.fs.RestorePermissions(path, mode, owner, group); err != nil {
+		m.AddError(fmt.Sprintf("Error: Failed to disable guard for %s: %v", path, err))
+		return false
+	}
+
+	return true
+}
+
+func (m *Manager) toggleCollectionGuardFlags(names []string) {
 	for _, name := range names {
 		if !m.security.IsRegisteredCollection(name) {
 			continue
@@ -482,15 +539,16 @@ func (m *Manager) ToggleCollections(names []string) error {
 
 		if err := m.security.SetRegisteredCollectionGuard(name, !guard); err != nil {
 			m.AddError(fmt.Sprintf("Error: Failed to toggle guard for collection %s: %v", name, err))
-			continue
 		}
 	}
+}
 
-	if err := m.SaveRegistry(); err != nil {
-		return fmt.Errorf("failed to save registry: %w", err)
+func mapKeys(values map[string]bool) []string {
+	keys := make([]string, 0, len(values))
+	for key := range values {
+		keys = append(keys, key)
 	}
-
-	return nil
+	return keys
 }
 
 // EnableCollections enables guard for all files in the specified collections.

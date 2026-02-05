@@ -299,8 +299,12 @@ Empty or non-existent collections will generate warnings.`,
 				// Check which files exist on disk and print them (sorted)
 				existing, _ := mgr.GetFileSystem().CheckFilesExist(status.Files)
 				sort.Strings(existing)
+
+				// Print header for this collection's files
+				fmt.Printf("toggling guarded state for files in collection: %s\n", collectionName)
+
 				for _, file := range existing {
-					fmt.Printf("Guard disabled for %s\n", file)
+					fmt.Printf("Guard disabled for %s\n", displayPath(mgr, file))
 				}
 			}
 			fmt.Println()

@@ -328,9 +328,9 @@ states, an error will be returned and no changes will be made (conflict detectio
 				sort.Strings(existing)
 				for _, file := range existing {
 					if guardState {
-						fmt.Printf("Guard enabled for %s\n", file)
+						fmt.Printf("Guard enabled for %s\n", displayPath(mgr, file))
 					} else {
-						fmt.Printf("Guard disabled for %s\n", file)
+						fmt.Printf("Guard disabled for %s\n", displayPath(mgr, file))
 					}
 				}
 			}
