@@ -97,7 +97,7 @@ func (m *Manager) GetCollectionsContainingFile(path string) ([]string, error) {
 	for _, name := range m.security.GetRegisteredCollections() {
 		files, err := m.security.GetRegisteredCollectionFiles(name)
 		if err != nil {
-			continue
+			return nil, fmt.Errorf("failed to get files for collection %s: %w", name, err)
 		}
 		for _, filePath := range files {
 			if filePath == absPath {

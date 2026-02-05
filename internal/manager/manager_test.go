@@ -49,22 +49,22 @@ func TestManagerInitialization(t *testing.T) {
 	}
 
 	// Verify registry was created
-	if mgr.GetRegistry() == nil {
+	if mgr.security == nil {
 		t.Fatal("Registry should not be nil after initialization")
 	}
 
 	// Verify defaults
-	mode := mgr.GetRegistry().GetDefaultFileMode()
+	mode := mgr.security.GetDefaultFileMode()
 	if mode != 0600 {
 		t.Errorf("Expected mode 0600, got %o", mode)
 	}
 
-	owner := mgr.GetRegistry().GetDefaultFileOwner()
+	owner := mgr.security.GetDefaultFileOwner()
 	if owner != "testuser" {
 		t.Errorf("Expected owner 'testuser', got %s", owner)
 	}
 
-	group := mgr.GetRegistry().GetDefaultFileGroup()
+	group := mgr.security.GetDefaultFileGroup()
 	if group != "testgroup" {
 		t.Errorf("Expected group 'testgroup', got %s", group)
 	}
@@ -108,10 +108,10 @@ func TestAddFiles(t *testing.T) {
 	}
 
 	// Verify files were registered
-	if !mgr.GetRegistry().IsRegisteredFile(file1) {
+	if !mgr.security.IsRegisteredFile(file1) {
 		t.Error("File1 should be registered")
 	}
-	if !mgr.GetRegistry().IsRegisteredFile(file2) {
+	if !mgr.security.IsRegisteredFile(file2) {
 		t.Error("File2 should be registered")
 	}
 
@@ -201,10 +201,10 @@ func TestAddCollections(t *testing.T) {
 	}
 
 	// Verify collections were registered
-	if !mgr.GetRegistry().IsRegisteredCollection("coll1") {
+	if !mgr.security.IsRegisteredCollection("coll1") {
 		t.Error("Collection coll1 should be registered")
 	}
-	if !mgr.GetRegistry().IsRegisteredCollection("coll2") {
+	if !mgr.security.IsRegisteredCollection("coll2") {
 		t.Error("Collection coll2 should be registered")
 	}
 
@@ -345,12 +345,12 @@ func TestAddFilesToCollections(t *testing.T) {
 	}
 
 	// Verify files are in collections
-	files1, _ := mgr.GetRegistry().GetRegisteredCollectionFiles("coll1")
+	files1, _ := mgr.security.GetRegisteredCollectionFiles("coll1")
 	if len(files1) != 2 {
 		t.Errorf("Collection coll1 should have 2 files, got %d", len(files1))
 	}
 
-	files2, _ := mgr.GetRegistry().GetRegisteredCollectionFiles("coll2")
+	files2, _ := mgr.security.GetRegisteredCollectionFiles("coll2")
 	if len(files2) != 2 {
 		t.Errorf("Collection coll2 should have 2 files, got %d", len(files2))
 	}
@@ -416,12 +416,12 @@ func TestCleanup(t *testing.T) {
 	}
 
 	// Verify file was removed from registry
-	if mgr.GetRegistry().IsRegisteredFile(file1) {
+	if mgr.security.IsRegisteredFile(file1) {
 		t.Error("File should be removed from registry after cleanup")
 	}
 
 	// Verify empty collection was removed
-	if mgr.GetRegistry().IsRegisteredCollection("empty_coll") {
+	if mgr.security.IsRegisteredCollection("empty_coll") {
 		t.Error("Empty collection should be removed after cleanup")
 	}
 }
@@ -454,8 +454,8 @@ func TestToggleCollectionsConflictDetection(t *testing.T) {
 	}
 
 	// Verify coll1 is guarded, coll2 is not
-	guard1, _ := mgr.GetRegistry().GetRegisteredCollectionGuard("coll1")
-	guard2, _ := mgr.GetRegistry().GetRegisteredCollectionGuard("coll2")
+	guard1, _ := mgr.security.GetRegisteredCollectionGuard("coll1")
+	guard2, _ := mgr.security.GetRegisteredCollectionGuard("coll2")
 
 	if !guard1 {
 		t.Fatal("coll1 should be guarded")
@@ -482,8 +482,8 @@ func TestToggleCollectionsConflictDetection(t *testing.T) {
 	}
 
 	// Verify no state changes occurred (critical requirement)
-	guard1After, _ := mgr.GetRegistry().GetRegisteredCollectionGuard("coll1")
-	guard2After, _ := mgr.GetRegistry().GetRegisteredCollectionGuard("coll2")
+	guard1After, _ := mgr.security.GetRegisteredCollectionGuard("coll1")
+	guard2After, _ := mgr.security.GetRegisteredCollectionGuard("coll2")
 
 	if guard1After != guard1 {
 		t.Error("coll1 guard state should not have changed after conflict")
@@ -521,8 +521,8 @@ func TestToggleCollectionsNoConflictSameState(t *testing.T) {
 	}
 
 	// Both should now be guarded
-	guard1, _ := mgr.GetRegistry().GetRegisteredCollectionGuard("coll1")
-	guard2, _ := mgr.GetRegistry().GetRegisteredCollectionGuard("coll2")
+	guard1, _ := mgr.security.GetRegisteredCollectionGuard("coll1")
+	guard2, _ := mgr.security.GetRegisteredCollectionGuard("coll2")
 
 	if !guard1 || !guard2 {
 		t.Error("Both collections should be guarded after toggle")
@@ -564,7 +564,7 @@ func TestRemoveFilesOperationOrder(t *testing.T) {
 	}
 
 	// Verify file is in collection and guarded
-	files, _ := mgr.GetRegistry().GetRegisteredCollectionFiles("coll1")
+	files, _ := mgr.security.GetRegisteredCollectionFiles("coll1")
 	if len(files) != 1 {
 		t.Fatal("File should be in collection before removal")
 	}
@@ -576,13 +576,13 @@ func TestRemoveFilesOperationOrder(t *testing.T) {
 	}
 
 	// Verify file was removed from collection
-	filesAfter, _ := mgr.GetRegistry().GetRegisteredCollectionFiles("coll1")
+	filesAfter, _ := mgr.security.GetRegisteredCollectionFiles("coll1")
 	if len(filesAfter) != 0 {
 		t.Error("File should be removed from collection")
 	}
 
 	// Verify file was removed from registry
-	if mgr.GetRegistry().IsRegisteredFile(file1) {
+	if mgr.security.IsRegisteredFile(file1) {
 		t.Error("File should be removed from registry")
 	}
 

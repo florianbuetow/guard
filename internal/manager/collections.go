@@ -149,9 +149,10 @@ func (m *Manager) RemoveCollections(names []string) error {
 		// Only restore if guard is enabled
 		if guard {
 			// Clear immutable flag first (must be done before chmod)
-			if err := m.fs.ClearImmutable(path); err != nil {
+			if err := m.ensureNotImmutable(path); err != nil {
 				if errors.Is(err, filesystem.ErrRootRequired) {
 					m.AddWarning(NewWarning(WarningGeneric, fmt.Sprintf("Clearing immutable flag requires root privileges (sudo) for file %s - skipping", path)))
+					continue
 				} else {
 					m.AddError(fmt.Sprintf("Error: Failed to clear immutable flag for %s: %v", path, err))
 					continue
@@ -508,9 +509,10 @@ func (m *Manager) enableGuardForFile(path string) bool {
 }
 
 func (m *Manager) disableGuardForFile(path string, mode os.FileMode, owner, group string) bool {
-	if err := m.fs.ClearImmutable(path); err != nil {
+	if err := m.ensureNotImmutable(path); err != nil {
 		if errors.Is(err, filesystem.ErrRootRequired) {
 			m.AddWarning(NewWarning(WarningGeneric, fmt.Sprintf("Clearing immutable flag requires root privileges (sudo) for file %s - skipping", path)))
+			return false
 		} else {
 			m.AddError(fmt.Sprintf("Error: Failed to clear immutable flag for %s: %v", path, err))
 			return false
@@ -726,9 +728,10 @@ func (m *Manager) disableCollections(names []string) error {
 		// Only restore if guard is enabled
 		if guard {
 			// Clear immutable flag first (must be done before chmod)
-			if err := m.fs.ClearImmutable(path); err != nil {
+			if err := m.ensureNotImmutable(path); err != nil {
 				if errors.Is(err, filesystem.ErrRootRequired) {
 					m.AddWarning(NewWarning(WarningGeneric, fmt.Sprintf("Clearing immutable flag requires root privileges (sudo) for file %s - skipping", path)))
+					continue
 				} else {
 					m.AddError(fmt.Sprintf("Error: Failed to clear immutable flag for %s: %v", path, err))
 					continue

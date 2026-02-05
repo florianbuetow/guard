@@ -17,6 +17,80 @@ type FileInfo struct {
 	Collections []string
 }
 
+type fileRollback struct {
+	path      string
+	prevGuard bool
+	prevMode  os.FileMode
+	prevOwner string
+	prevGroup string
+}
+
+func (m *Manager) captureFileRollback(path string) (*fileRollback, error) {
+	if m.security.IsRegisteredFile(path) {
+		owner, group, mode, guard, err := m.security.GetRegisteredFileConfig(path)
+		if err != nil {
+			return nil, err
+		}
+		return &fileRollback{
+			path:      path,
+			prevGuard: guard,
+			prevMode:  mode,
+			prevOwner: owner,
+			prevGroup: group,
+		}, nil
+	}
+
+	mode, owner, group, err := m.fs.GetFileInfo(path)
+	if err != nil {
+		return nil, err
+	}
+
+	return &fileRollback{
+		path:      path,
+		prevGuard: false,
+		prevMode:  mode,
+		prevOwner: owner,
+		prevGroup: group,
+	}, nil
+}
+
+func (m *Manager) rollbackFileChanges(changes []fileRollback) {
+	for _, change := range changes {
+		if change.prevGuard {
+			guardMode := m.security.GetDefaultFileMode()
+			guardOwner := m.security.GetDefaultFileOwner()
+			guardGroup := m.security.GetDefaultFileGroup()
+
+			if err := m.fs.ApplyPermissions(change.path, guardMode, guardOwner, guardGroup); err != nil {
+				m.AddError(fmt.Sprintf("Error: Failed to rollback guard permissions for %s: %v", change.path, err))
+				continue
+			}
+
+			if err := m.fs.SetImmutable(change.path); err != nil {
+				if errors.Is(err, filesystem.ErrRootRequired) {
+					m.AddWarning(NewWarning(WarningGeneric, fmt.Sprintf("Rollback: setting immutable flag requires root privileges (sudo) for file %s - skipping", change.path)))
+				} else {
+					m.AddError(fmt.Sprintf("Error: Failed to rollback immutable flag for %s: %v", change.path, err))
+				}
+			}
+			continue
+		}
+
+		if err := m.ensureNotImmutable(change.path); err != nil {
+			if errors.Is(err, filesystem.ErrRootRequired) {
+				m.AddWarning(NewWarning(WarningGeneric, fmt.Sprintf("Rollback: clearing immutable flag requires root privileges (sudo) for file %s - skipping", change.path)))
+				continue
+			}
+			m.AddError(fmt.Sprintf("Error: Failed to rollback immutable flag for %s: %v", change.path, err))
+			continue
+		}
+
+		if err := m.fs.RestorePermissions(change.path, change.prevMode, change.prevOwner, change.prevGroup); err != nil {
+			m.AddError(fmt.Sprintf("Error: Failed to rollback permissions for %s: %v", change.path, err))
+		}
+	}
+}
+
 // AddFiles registers files in the registry if they don't already exist.
 // Per Requirement 2.3: Warns if files are missing on disk, but continues processing.
 // Per Requirement 2.4: Idempotent - ignores files already registered (no warning).
@@ -89,11 +163,38 @@ func (m *Manager) RemoveFiles(paths []string) error {
 		return fmt.Errorf("no files specified")
 	}
 
+	var rollbacks []fileRollback
 	for _, path := range paths {
 		// Check if file is registered
 		if !m.security.IsRegisteredFile(path) {
 			m.AddWarning(NewWarning(WarningFileNotInRegistry, "", path))
 			continue
+		}
+
+		rollbackInfo, err := m.captureFileRollback(path)
+		if err != nil {
+			m.AddError(fmt.Sprintf("Error: Failed to capture rollback info for %s: %v", path, err))
+			continue
+		}
+
+		absPath, err := filepath.Abs(path)
+		if err != nil {
+			m.AddError(fmt.Sprintf("Error: Failed to resolve path %s: %v", path, err))
+			continue
+		}
+
+		var collectionsContaining []string
+		for _, coll := range m.security.GetRegisteredCollections() {
+			files, err := m.security.GetRegisteredCollectionFiles(coll)
+			if err != nil {
+				continue
+			}
+			for _, filePath := range files {
+				if filePath == absPath {
+					collectionsContaining = append(collectionsContaining, coll)
+					break
+				}
+			}
 		}
 
 		// Step 1: Remove from all collections
@@ -110,11 +211,19 @@ func (m *Manager) RemoveFiles(paths []string) error {
 		// Only restore if currently guarded
 		if guard {
 			// Clear immutable flag first (must be done before chmod)
-			if err := m.fs.ClearImmutable(path); err != nil {
+			if err := m.ensureNotImmutable(path); err != nil {
 				if errors.Is(err, filesystem.ErrRootRequired) {
 					m.AddWarning(NewWarning(WarningGeneric, fmt.Sprintf("Clearing immutable flag requires root privileges (sudo) for file %s - skipping", path)))
+					if len(collectionsContaining) > 0 {
+						_ = m.security.AddRegisteredFilesToRegisteredCollections(collectionsContaining, []string{path})
+					}
+					continue
 				} else {
 					m.AddError(fmt.Sprintf("Error: Failed to clear immutable flag for %s: %v", path, err))
+					// Attempt restore anyway to surface permission errors clearly
+					if err := m.fs.RestorePermissions(path, mode, owner, group); err != nil {
+						m.AddError(fmt.Sprintf("Error: Failed to restore permissions for %s: %v", path, err))
+					}
 					continue
 				}
 			}
@@ -133,10 +242,13 @@ func (m *Manager) RemoveFiles(paths []string) error {
 			m.AddError(fmt.Sprintf("Error: Failed to unregister %s: %v", path, err))
 			continue
 		}
+
+		rollbacks = append(rollbacks, *rollbackInfo)
 	}
 
 	// Save registry
 	if err := m.SaveRegistry(); err != nil {
+		m.rollbackFileChanges(rollbacks)
 		return fmt.Errorf("failed to save registry: %w", err)
 	}
 
@@ -168,6 +280,7 @@ func (m *Manager) ToggleFiles(paths []string) error {
 		newGuard bool
 	}
 	var toggles []fileToggle
+	var rollbacks []fileRollback
 
 	for _, path := range existing {
 		// Add to registry if not present
@@ -191,6 +304,12 @@ func (m *Manager) ToggleFiles(paths []string) error {
 		}
 
 		newGuard := !guard
+
+		rollbackInfo, err := m.captureFileRollback(path)
+		if err != nil {
+			m.AddError(fmt.Sprintf("Error: Failed to capture rollback info for %s: %v", path, err))
+			continue
+		}
 		if newGuard {
 			guardMode := m.security.GetDefaultFileMode()
 			guardOwner := m.security.GetDefaultFileOwner()
@@ -215,11 +334,16 @@ func (m *Manager) ToggleFiles(paths []string) error {
 				continue
 			}
 
-			if err := m.fs.ClearImmutable(path); err != nil {
+			if err := m.ensureNotImmutable(path); err != nil {
 				if errors.Is(err, filesystem.ErrRootRequired) {
 					m.AddWarning(NewWarning(WarningGeneric, fmt.Sprintf("Clearing immutable flag requires root privileges (sudo) for file %s - skipping", path)))
+					continue
 				} else {
 					m.AddError(fmt.Sprintf("Error: Failed to clear immutable flag for %s: %v", path, err))
+					// Attempt restore anyway to surface permission errors clearly
+					if err := m.fs.RestorePermissions(path, mode, owner, group); err != nil {
+						m.AddError(fmt.Sprintf("Error: Failed to restore permissions for %s: %v", path, err))
+					}
 					continue
 				}
 			}
@@ -230,6 +354,7 @@ func (m *Manager) ToggleFiles(paths []string) error {
 			}
 		}
 
+		rollbacks = append(rollbacks, *rollbackInfo)
 		toggles = append(toggles, fileToggle{path: path, newGuard: newGuard})
 	}
 
@@ -240,6 +365,7 @@ func (m *Manager) ToggleFiles(paths []string) error {
 	}
 
 	if err := m.SaveRegistry(); err != nil {
+		m.rollbackFileChanges(rollbacks)
 		return fmt.Errorf("failed to save registry: %w", err)
 	}
 
@@ -267,7 +393,14 @@ func (m *Manager) EnableFiles(paths []string) error {
 	}
 
 	// Register files and apply guard permissions
+	var rollbacks []fileRollback
 	for _, path := range existing {
+		rollbackInfo, err := m.captureFileRollback(path)
+		if err != nil {
+			m.AddError(fmt.Sprintf("Error: Failed to capture rollback info for %s: %v", path, err))
+			continue
+		}
+
 		// Add to registry if not present (Requirement 5.1)
 		if !m.security.IsRegisteredFile(path) {
 			mode, owner, group, err := m.fs.GetFileInfo(path)
@@ -306,10 +439,13 @@ func (m *Manager) EnableFiles(paths []string) error {
 			m.AddError(fmt.Sprintf("Error: Failed to set guard flag for %s: %v", path, err))
 			continue
 		}
+
+		rollbacks = append(rollbacks, *rollbackInfo)
 	}
 
 	// Save registry after applying filesystem permissions
 	if err := m.SaveRegistry(); err != nil {
+		m.rollbackFileChanges(rollbacks)
 		return fmt.Errorf("failed to save registry: %w", err)
 	}
 
@@ -336,6 +472,7 @@ func (m *Manager) DisableFiles(paths []string) error {
 	}
 
 	// Process existing files
+	var rollbacks []fileRollback
 	for _, path := range existing {
 		// Check if registered
 		if !m.security.IsRegisteredFile(path) {
@@ -352,12 +489,23 @@ func (m *Manager) DisableFiles(paths []string) error {
 
 		// Only restore if currently guarded
 		if guard {
+			rollbackInfo, err := m.captureFileRollback(path)
+			if err != nil {
+				m.AddError(fmt.Sprintf("Error: Failed to capture rollback info for %s: %v", path, err))
+				continue
+			}
+
 			// Clear immutable flag first (must be done before chmod)
-			if err := m.fs.ClearImmutable(path); err != nil {
+			if err := m.ensureNotImmutable(path); err != nil {
 				if errors.Is(err, filesystem.ErrRootRequired) {
 					m.AddWarning(NewWarning(WarningGeneric, fmt.Sprintf("Clearing immutable flag requires root privileges (sudo) for file %s - skipping", path)))
+					continue
 				} else {
 					m.AddError(fmt.Sprintf("Error: Failed to clear immutable flag for %s: %v", path, err))
+					// Attempt restore anyway to surface permission errors clearly
+					if err := m.fs.RestorePermissions(path, mode, owner, group); err != nil {
+						m.AddError(fmt.Sprintf("Error: Failed to restore permissions for %s: %v", path, err))
+					}
 					continue
 				}
 			}
@@ -366,6 +514,8 @@ func (m *Manager) DisableFiles(paths []string) error {
 				m.AddError(fmt.Sprintf("Error: Failed to restore permissions for %s: %v", path, err))
 				continue
 			}
+
+			rollbacks = append(rollbacks, *rollbackInfo)
 		}
 
 		// Set guard flag to false
@@ -377,6 +527,7 @@ func (m *Manager) DisableFiles(paths []string) error {
 
 	// Save registry
 	if err := m.SaveRegistry(); err != nil {
+		m.rollbackFileChanges(rollbacks)
 		return fmt.Errorf("failed to save registry: %w", err)
 	}
 
@@ -538,11 +689,16 @@ func (m *Manager) Reset() (*ResetResult, error) {
 		// Restore permissions if guarded
 		if guard {
 			// Clear immutable flag first (must be done before chmod)
-			if err := m.fs.ClearImmutable(path); err != nil {
+			if err := m.ensureNotImmutable(path); err != nil {
 				if errors.Is(err, filesystem.ErrRootRequired) {
 					m.AddWarning(NewWarning(WarningGeneric, fmt.Sprintf("Clearing immutable flag requires root privileges (sudo) for file %s - skipping", path)))
+					continue
 				} else {
 					m.AddError(fmt.Sprintf("Error: Failed to clear immutable flag for %s: %v", path, err))
+					// Attempt restore anyway to surface permission errors clearly
+					if err := m.fs.RestorePermissions(path, mode, owner, group); err != nil {
+						m.AddError(fmt.Sprintf("Error: Failed to restore permissions for %s: %v", path, err))
+					}
 					continue
 				}
 			}

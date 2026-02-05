@@ -255,9 +255,10 @@ func (m *Manager) toggleFolder(path string) error {
 			}
 		} else {
 			// Disable guard: clear immutable first, then restore permissions
-			if err := m.fs.ClearImmutable(filePath); err != nil {
+			if err := m.ensureNotImmutable(filePath); err != nil {
 				if errors.Is(err, filesystem.ErrRootRequired) {
 					m.AddWarning(NewWarning(WarningGeneric, fmt.Sprintf("Clearing immutable flag requires root privileges (sudo) for file %s - skipping", filePath)))
+					continue
 				} else {
 					m.AddError(fmt.Sprintf("Error: Failed to clear immutable flag for %s: %v", filePath, err))
 					continue
@@ -472,9 +473,10 @@ func (m *Manager) disableFolder(path string) error {
 		}
 
 		// Disable guard: clear immutable, then restore permissions
-		if err := m.fs.ClearImmutable(filePath); err != nil {
+		if err := m.ensureNotImmutable(filePath); err != nil {
 			if errors.Is(err, filesystem.ErrRootRequired) {
 				m.AddWarning(NewWarning(WarningGeneric, fmt.Sprintf("Clearing immutable flag requires root privileges (sudo) for file %s - skipping", filePath)))
+				continue
 			} else {
 				m.AddError(fmt.Sprintf("Error: Failed to clear immutable flag for %s: %v", filePath, err))
 				continue
