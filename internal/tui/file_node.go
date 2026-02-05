@@ -1,9 +1,9 @@
 package tui
 
 import (
+	"fmt"
 	"path/filepath"
 
-	"github.com/florianbuetow/guard/internal/filesystem"
 	"github.com/florianbuetow/guard/internal/manager"
 )
 
@@ -44,7 +44,11 @@ func NewFileNode(name, path string, isDir, isSymlink bool, depth int, parent *Fi
 }
 
 // BuildFileTree builds a tree of FileNodes from a root directory
-func BuildFileTree(rootPath string, fs *filesystem.FileSystem, mgr *manager.Manager) (*FileNode, error) {
+func BuildFileTree(rootPath string, mgr *manager.Manager) (*FileNode, error) {
+	if mgr == nil {
+		return nil, fmt.Errorf("manager is nil")
+	}
+
 	// Get the base name of the root
 	absPath, err := filepath.Abs(rootPath)
 	if err != nil {
@@ -56,7 +60,7 @@ func BuildFileTree(rootPath string, fs *filesystem.FileSystem, mgr *manager.Mana
 	root.Expanded = true // Root is always expanded
 
 	// Populate children
-	if err := populateChildren(root, fs, mgr); err != nil {
+	if err := populateChildren(root, mgr); err != nil {
 		return nil, err
 	}
 
@@ -64,12 +68,16 @@ func BuildFileTree(rootPath string, fs *filesystem.FileSystem, mgr *manager.Mana
 }
 
 // populateChildren populates the children of a directory node
-func populateChildren(node *FileNode, fs *filesystem.FileSystem, mgr *manager.Manager) error {
+func populateChildren(node *FileNode, mgr *manager.Manager) error {
 	if !node.IsDir {
 		return nil
 	}
 
-	entries, err := fs.ReadDir(node.Path)
+	if mgr == nil {
+		return fmt.Errorf("manager is nil")
+	}
+
+	entries, err := mgr.ReadDir(node.Path)
 	if err != nil {
 		return err
 	}
@@ -96,19 +104,19 @@ func populateChildren(node *FileNode, fs *filesystem.FileSystem, mgr *manager.Ma
 }
 
 // RefreshChildren refreshes the children of a node while preserving expansion state
-func (n *FileNode) RefreshChildren(fs *filesystem.FileSystem, mgr *manager.Manager) error {
+func (n *FileNode) RefreshChildren(mgr *manager.Manager) error {
 	// Save expansion state of the ENTIRE subtree before refreshing
 	expansionState := make(map[string]bool)
 	collectExpansionState(n, expansionState)
 
 	// Clear and repopulate children
 	n.Children = nil
-	if err := populateChildren(n, fs, mgr); err != nil {
+	if err := populateChildren(n, mgr); err != nil {
 		return err
 	}
 
 	// Restore expansion state for all directories in the subtree
-	restoreExpansionState(n, expansionState, fs, mgr)
+	restoreExpansionState(n, expansionState, mgr)
 
 	return nil
 }
@@ -124,22 +132,22 @@ func collectExpansionState(node *FileNode, state map[string]bool) {
 }
 
 // restoreExpansionState recursively restores expansion state and populates children
-func restoreExpansionState(node *FileNode, state map[string]bool, fs *filesystem.FileSystem, mgr *manager.Manager) {
+func restoreExpansionState(node *FileNode, state map[string]bool, mgr *manager.Manager) {
 	for _, child := range node.Children {
 		if child.IsDir {
 			if state[child.Path] {
 				child.Expanded = true
 				// Populate this child's children
-				_ = populateChildren(child, fs, mgr)
+				_ = populateChildren(child, mgr)
 				// Recursively restore expansion for grandchildren
-				restoreExpansionState(child, state, fs, mgr)
+				restoreExpansionState(child, state, mgr)
 			}
 		}
 	}
 }
 
 // Expand expands the node if it's a directory
-func (n *FileNode) Expand(fs *filesystem.FileSystem, mgr *manager.Manager) error {
+func (n *FileNode) Expand(mgr *manager.Manager) error {
 	if !n.IsDir || n.IsSymlink {
 		return nil
 	}
@@ -148,7 +156,7 @@ func (n *FileNode) Expand(fs *filesystem.FileSystem, mgr *manager.Manager) error
 		n.Expanded = true
 		// Load children if not already loaded
 		if len(n.Children) == 0 {
-			return populateChildren(n, fs, mgr)
+			return populateChildren(n, mgr)
 		}
 	}
 
@@ -161,12 +169,12 @@ func (n *FileNode) Collapse() {
 }
 
 // Toggle toggles the expansion state
-func (n *FileNode) Toggle(fs *filesystem.FileSystem, mgr *manager.Manager) error {
+func (n *FileNode) Toggle(mgr *manager.Manager) error {
 	if n.Expanded {
 		n.Collapse()
 		return nil
 	}
-	return n.Expand(fs, mgr)
+	return n.Expand(mgr)
 }
 
 // FlattenedNode represents a node in the flattened list with rendering info
@@ -250,15 +258,15 @@ func collectVisible(node *FileNode, result *[]*FileNode) {
 }
 
 // UpdateGuardStates updates the guard states for all nodes
-func UpdateGuardStates(root *FileNode, mgr *manager.Manager, fs *filesystem.FileSystem) {
+func UpdateGuardStates(root *FileNode, mgr *manager.Manager) {
 	if root == nil {
 		return
 	}
 
-	updateNodeGuardState(root, mgr, fs)
+	updateNodeGuardState(root, mgr)
 }
 
-func updateNodeGuardState(node *FileNode, mgr *manager.Manager, fs *filesystem.FileSystem) {
+func updateNodeGuardState(node *FileNode, mgr *manager.Manager) {
 	if node.IsDir {
 		// Compute folder guard state based on immediate children
 		var files []string
@@ -269,9 +277,9 @@ func updateNodeGuardState(node *FileNode, mgr *manager.Manager, fs *filesystem.F
 					files = append(files, child.Path)
 				}
 			}
-		} else if fs != nil {
+		} else if mgr != nil {
 			// Folder is collapsed - get files from disk
-			diskFiles, err := fs.CollectImmediateFiles(node.Path)
+			diskFiles, err := mgr.CollectImmediateFiles(node.Path)
 			if err == nil {
 				files = diskFiles
 			}
@@ -283,6 +291,6 @@ func updateNodeGuardState(node *FileNode, mgr *manager.Manager, fs *filesystem.F
 
 	// Recurse into children
 	for _, child := range node.Children {
-		updateNodeGuardState(child, mgr, fs)
+		updateNodeGuardState(child, mgr)
 	}
 }

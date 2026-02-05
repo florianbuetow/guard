@@ -627,7 +627,7 @@ func TestUninstallVerification(t *testing.T) {
 	}
 
 	// Run uninstall
-	err = mgr.Destroy()
+	_, err = mgr.Destroy()
 	if err != nil {
 		t.Fatalf("Uninstall failed: %v", err)
 	}

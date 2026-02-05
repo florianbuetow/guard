@@ -53,10 +53,9 @@ Examples:
 				// Count files already disabled before operation
 				alreadyDisabled := 0
 				for _, path := range files {
-					if mgr.IsRegisteredFile(path) {
-						if guard, _ := mgr.GetRegistry().GetRegisteredFileGuard(path); !guard {
-							alreadyDisabled++
-						}
+					status, err := mgr.GetFileStatus(path)
+					if err == nil && status.Registered && !status.Guard {
+						alreadyDisabled++
 					}
 				}
 
@@ -68,10 +67,9 @@ Examples:
 				// Count files now disabled
 				nowDisabled := 0
 				for _, path := range files {
-					if mgr.IsRegisteredFile(path) {
-						if guard, _ := mgr.GetRegistry().GetRegisteredFileGuard(path); !guard {
-							nowDisabled++
-						}
+					status, err := mgr.GetFileStatus(path)
+					if err == nil && status.Registered && !status.Guard {
+						nowDisabled++
 					}
 				}
 				newlyDisabled := nowDisabled - alreadyDisabled
@@ -104,17 +102,11 @@ Examples:
 				}
 			}
 
-			// Save registry
-			if err := mgr.SaveRegistry(); err != nil {
-				fmt.Fprintf(os.Stderr, "Error: Failed to save registry: %v\n", err)
-				os.Exit(1)
-			}
-
 			// Print warnings
-			manager.PrintWarnings(mgr.GetWarnings())
+			printWarnings(mgr.GetWarnings())
 
 			// Print errors
-			manager.PrintErrors(mgr.GetErrors())
+			printErrors(mgr.GetErrors())
 
 			// Exit with error code if there were errors
 			if mgr.HasErrors() {
@@ -161,11 +153,9 @@ Files not in the registry or missing on disk will generate warnings.`,
 			// Count files already disabled before operation
 			alreadyDisabled := 0
 			for _, path := range args {
-				if guard, _ := mgr.GetRegistry().GetRegisteredFileGuard(path); !guard {
-					// File exists in registry but guard is false (disabled)
-					if mgr.IsRegisteredFile(path) {
-						alreadyDisabled++
-					}
+				status, err := mgr.GetFileStatus(path)
+				if err == nil && status.Registered && !status.Guard {
+					alreadyDisabled++
 				}
 			}
 
@@ -178,19 +168,12 @@ Files not in the registry or missing on disk will generate warnings.`,
 			// Count files now disabled (guard=false and in registry)
 			nowDisabled := 0
 			for _, path := range args {
-				if mgr.IsRegisteredFile(path) {
-					if guard, _ := mgr.GetRegistry().GetRegisteredFileGuard(path); !guard {
-						nowDisabled++
-					}
+				status, err := mgr.GetFileStatus(path)
+				if err == nil && status.Registered && !status.Guard {
+					nowDisabled++
 				}
 			}
 			newlyDisabled := nowDisabled - alreadyDisabled
-
-			// Save registry
-			if err := mgr.SaveRegistry(); err != nil {
-				fmt.Fprintf(os.Stderr, "Error: Failed to save registry: %v\n", err)
-				os.Exit(1)
-			}
 
 			// Print success message
 			if newlyDisabled > 0 {
@@ -203,10 +186,10 @@ Files not in the registry or missing on disk will generate warnings.`,
 			}
 
 			// Print warnings
-			manager.PrintWarnings(mgr.GetWarnings())
+			printWarnings(mgr.GetWarnings())
 
 			// Print errors
-			manager.PrintErrors(mgr.GetErrors())
+			printErrors(mgr.GetErrors())
 
 			// Exit with error code if there were errors
 			if mgr.HasErrors() {
@@ -249,22 +232,16 @@ Folders are dynamic collections that scan files from disk. On disable:
 				os.Exit(1)
 			}
 
-			// Save registry
-			if err := mgr.SaveRegistry(); err != nil {
-				fmt.Fprintf(os.Stderr, "Error: Failed to save registry: %v\n", err)
-				os.Exit(1)
-			}
-
 			// Print success message for folders
 			if len(args) > 0 {
 				fmt.Printf("Guard disabled for %d folder(s)\n", len(args))
 			}
 
 			// Print warnings
-			manager.PrintWarnings(mgr.GetWarnings())
+			printWarnings(mgr.GetWarnings())
 
 			// Print errors
-			manager.PrintErrors(mgr.GetErrors())
+			printErrors(mgr.GetErrors())
 
 			// Exit with error code if there were errors
 			if mgr.HasErrors() {
@@ -302,27 +279,25 @@ Empty or non-existent collections will generate warnings.`,
 				os.Exit(1)
 			}
 
-			// Save registry
-			if err := mgr.SaveRegistry(); err != nil {
-				fmt.Fprintf(os.Stderr, "Error: Failed to save registry: %v\n", err)
-				os.Exit(1)
-			}
-
 			// Print success messages - files first (sorted), then collection summary
 			for _, collectionName := range args {
 				// Check if collection exists in registry
-				if !mgr.GetRegistry().IsRegisteredCollection(collectionName) {
+				status, err := mgr.GetCollectionStatus(collectionName, true)
+				if err != nil {
+					fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+					os.Exit(1)
+				}
+				if !status.Exists {
 					continue // Collection doesn't exist, warning already printed
 				}
 
 				// Get files from collection
-				files, err := mgr.GetRegistry().GetRegisteredCollectionFiles(collectionName)
-				if err != nil || len(files) == 0 {
+				if len(status.Files) == 0 {
 					continue // Error or empty collection, warnings already printed
 				}
 
 				// Check which files exist on disk and print them (sorted)
-				existing, _ := mgr.GetFileSystem().CheckFilesExist(files)
+				existing, _ := mgr.GetFileSystem().CheckFilesExist(status.Files)
 				sort.Strings(existing)
 				for _, file := range existing {
 					fmt.Printf("Guard disabled for %s\n", file)
@@ -330,22 +305,26 @@ Empty or non-existent collections will generate warnings.`,
 			}
 			fmt.Println()
 			for _, collectionName := range args {
-				if !mgr.GetRegistry().IsRegisteredCollection(collectionName) {
+				status, err := mgr.GetCollectionStatus(collectionName, true)
+				if err != nil {
+					fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+					os.Exit(1)
+				}
+				if !status.Exists {
 					continue
 				}
 				// Only print collection success if it has files
-				files, err := mgr.GetRegistry().GetRegisteredCollectionFiles(collectionName)
-				if err != nil || len(files) == 0 {
+				if len(status.Files) == 0 {
 					continue // Skip empty collections
 				}
 				fmt.Printf("Guard disabled for collection %s\n", collectionName)
 			}
 
 			// Print warnings
-			manager.PrintWarnings(mgr.GetWarnings())
+			printWarnings(mgr.GetWarnings())
 
 			// Print errors
-			manager.PrintErrors(mgr.GetErrors())
+			printErrors(mgr.GetErrors())
 
 			// Exit with error code if there were errors
 			if mgr.HasErrors() {

@@ -46,25 +46,24 @@ Use this to empty a collection while keeping the collection and file registratio
 			alreadyEmpty := []string{}
 
 			for _, name := range args {
-				if mgr.IsRegisteredCollection(name) {
-					count, _ := mgr.GetRegistry().CountFilesInCollection(name)
-					if count == 0 {
-						alreadyEmpty = append(alreadyEmpty, name)
-					} else {
-						existingCollections = append(existingCollections, collectionInfo{name: name, fileCount: count})
-					}
+				status, err := mgr.GetCollectionStatus(name, false)
+				if err != nil {
+					fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+					os.Exit(1)
+				}
+				if !status.Exists {
+					continue
+				}
+				if status.FileCount == 0 {
+					alreadyEmpty = append(alreadyEmpty, name)
+				} else {
+					existingCollections = append(existingCollections, collectionInfo{name: name, fileCount: status.FileCount})
 				}
 			}
 
 			// Clear collections
 			if err := mgr.ClearCollections(args); err != nil {
 				fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-				os.Exit(1)
-			}
-
-			// Save registry
-			if err := mgr.SaveRegistry(); err != nil {
-				fmt.Fprintf(os.Stderr, "Error: Failed to save registry: %v\n", err)
 				os.Exit(1)
 			}
 
@@ -85,10 +84,10 @@ Use this to empty a collection while keeping the collection and file registratio
 			}
 
 			// Print warnings
-			manager.PrintWarnings(mgr.GetWarnings())
+			printWarnings(mgr.GetWarnings())
 
 			// Print errors
-			manager.PrintErrors(mgr.GetErrors())
+			printErrors(mgr.GetErrors())
 
 			// Exit with error code if there were errors
 			if mgr.HasErrors() {

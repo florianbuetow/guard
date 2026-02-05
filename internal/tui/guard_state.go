@@ -8,18 +8,15 @@ import (
 // This is the ONLY state files should display - no implicit/effective computation.
 // Files can only be: [G] guarded, [-] not guarded, [ ] not registered.
 func GetFileRegistryGuardState(mgr *manager.Manager, path string) GuardState {
-	if mgr == nil || !mgr.IsRegisteredFile(path) {
+	if mgr == nil {
 		return GuardStateNotRegistered
 	}
-	reg := mgr.GetRegistry()
-	if reg == nil {
+
+	status, err := mgr.GetFileStatus(path)
+	if err != nil || !status.Registered {
 		return GuardStateNotRegistered
 	}
-	fileGuard, err := reg.GetRegisteredFileGuard(path)
-	if err != nil {
-		return GuardStateNotRegistered
-	}
-	if fileGuard {
+	if status.Guard {
 		return GuardStateExplicit
 	}
 	return GuardStateUnguarded
@@ -87,34 +84,24 @@ func ComputeEffectiveCollectionGuardState(mgr *manager.Manager, collectionName s
 		return GuardStateUnguarded
 	}
 
-	reg := mgr.GetRegistry()
-	if reg == nil {
+	status, err := mgr.GetCollectionStatus(collectionName, true)
+	if err != nil || !status.Exists {
 		return GuardStateUnguarded
 	}
 
 	// Get the collection's direct guard status
-	colGuard, err := reg.GetRegisteredCollectionGuard(collectionName)
-	if err != nil {
-		return GuardStateUnguarded
-	}
-
-	if colGuard {
+	if status.Guard {
 		return GuardStateExplicit
 	}
 
 	// Get files in the collection
-	files, err := reg.GetRegisteredCollectionFiles(collectionName)
-	if err != nil {
-		return GuardStateUnguarded
-	}
-
-	if len(files) == 0 {
+	if len(status.Files) == 0 {
 		return GuardStateUnguarded
 	}
 
 	// Check individual file states based on their direct registry state
 	var guarded, unguarded int
-	for _, path := range files {
+	for _, path := range status.Files {
 		state := GetFileRegistryGuardState(mgr, path)
 		switch state {
 		case GuardStateExplicit:
@@ -141,18 +128,13 @@ func IsFileInCollection(mgr *manager.Manager, path, collectionName string) bool 
 		return false
 	}
 
-	reg := mgr.GetRegistry()
-	if reg == nil {
-		return false
-	}
-
-	files, err := reg.GetRegisteredCollectionFiles(collectionName)
+	collections, err := mgr.GetCollectionsContainingFile(path)
 	if err != nil {
 		return false
 	}
 
-	for _, f := range files {
-		if f == path {
+	for _, name := range collections {
+		if name == collectionName {
 			return true
 		}
 	}
@@ -165,23 +147,9 @@ func GetCollectionsContainingFile(mgr *manager.Manager, path string) []string {
 		return nil
 	}
 
-	reg := mgr.GetRegistry()
-	if reg == nil {
+	collections, err := mgr.GetCollectionsContainingFile(path)
+	if err != nil {
 		return nil
 	}
-
-	var result []string
-	for _, colName := range reg.GetRegisteredCollections() {
-		files, err := reg.GetRegisteredCollectionFiles(colName)
-		if err != nil {
-			continue
-		}
-		for _, f := range files {
-			if f == path {
-				result = append(result, colName)
-				break
-			}
-		}
-	}
-	return result
+	return collections
 }

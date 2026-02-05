@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/charmbracelet/bubbles/key"
@@ -188,24 +189,17 @@ func (ct *CollectionTree) toggleGuard() tea.Cmd {
 		return nil
 	}
 
-	reg := ct.mgr.GetRegistry()
-	if reg == nil {
-		return nil
-	}
-
 	// Get current guard state
-	guard, err := reg.GetRegisteredCollectionGuard(node.Name)
+	status, err := ct.mgr.GetCollectionStatus(node.Name, false)
 	if err != nil {
 		return func() tea.Msg { return ErrorMsg{Err: err} }
+	}
+	if !status.Exists {
+		return func() tea.Msg { return ErrorMsg{Err: fmt.Errorf("collection not found: %s", node.Name)} }
 	}
 
 	// Use manager's ToggleCollections to toggle both collection and file permissions
 	if err := ct.mgr.ToggleCollections([]string{node.Name}); err != nil {
-		return func() tea.Msg { return ErrorMsg{Err: err} }
-	}
-
-	// Save registry
-	if err := reg.Save(); err != nil {
 		return func() tea.Msg { return ErrorMsg{Err: err} }
 	}
 
@@ -216,7 +210,7 @@ func (ct *CollectionTree) toggleGuard() tea.Cmd {
 		return GuardToggledMsg{
 			Path:          node.Name,
 			IsCollection:  true,
-			NewGuardState: !guard,
+			NewGuardState: !status.Guard,
 			AffectedFiles: node.FileCount,
 		}
 	}

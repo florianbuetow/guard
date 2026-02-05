@@ -120,17 +120,11 @@ Files will be registered if they don't exist in the registry.`,
 				}
 			}
 
-			// Save registry
-			if err := mgr.SaveRegistry(); err != nil {
-				fmt.Fprintf(os.Stderr, "Error: Failed to save registry: %v\n", err)
-				os.Exit(1)
-			}
-
 			// Print warnings
-			manager.PrintWarnings(mgr.GetWarnings())
+			printWarnings(mgr.GetWarnings())
 
 			// Print errors
-			manager.PrintErrors(mgr.GetErrors())
+			printErrors(mgr.GetErrors())
 
 			// Exit with error code if there were errors
 			if mgr.HasErrors() {

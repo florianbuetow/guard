@@ -1,6 +1,7 @@
 package filesystem
 
 import (
+	"errors"
 	"os"
 	"os/user"
 	"path/filepath"
@@ -743,23 +744,17 @@ func TestSetImmutableBehavior(t *testing.T) {
 			}
 		}
 	} else {
-		// Running as non-root - test warning behavior
-		t.Log("Running as non-root - testing warning behavior")
+		// Running as non-root - should return ErrRootRequired on supported platforms
+		t.Log("Running as non-root - testing root required behavior")
 
-		if isSupported {
-			// Should print warning and return nil (no error) on supported platforms
-			err := fs.SetImmutable(testFile)
-			if err != nil {
-				t.Errorf("SetImmutable without root should return nil (with warning) on supported platform %s, got: %v", runtime.GOOS, err)
-			}
-		} else {
-			// Should return "not supported" error on unsupported platforms
-			err := fs.SetImmutable(testFile)
+		err := fs.SetImmutable(testFile)
+		if !isSupported {
+			// Unsupported platforms may return either root-required or not supported depending on implementation
 			if err == nil {
 				t.Errorf("SetImmutable should return error on unsupported platform %s", runtime.GOOS)
-			} else if !strings.Contains(err.Error(), "not supported") {
-				t.Errorf("SetImmutable should return 'not supported' error on %s, got: %v", runtime.GOOS, err)
 			}
+		} else if !errors.Is(err, ErrRootRequired) {
+			t.Errorf("SetImmutable without root should return ErrRootRequired on supported platform %s, got: %v", runtime.GOOS, err)
 		}
 	}
 }
@@ -801,23 +796,17 @@ func TestClearImmutableBehavior(t *testing.T) {
 			}
 		}
 	} else {
-		// Running as non-root - test warning behavior
-		t.Log("Running as non-root - testing warning behavior")
+		// Running as non-root - should return ErrRootRequired on supported platforms
+		t.Log("Running as non-root - testing root required behavior")
 
-		if isSupported {
-			// Should print warning and return nil (no error) on supported platforms
-			err := fs.ClearImmutable(testFile)
-			if err != nil {
-				t.Errorf("ClearImmutable without root should return nil (with warning) on supported platform %s, got: %v", runtime.GOOS, err)
-			}
-		} else {
-			// Should return "not supported" error on unsupported platforms
-			err := fs.ClearImmutable(testFile)
+		err := fs.ClearImmutable(testFile)
+		if !isSupported {
+			// Unsupported platforms may return either root-required or not supported depending on implementation
 			if err == nil {
 				t.Errorf("ClearImmutable should return error on unsupported platform %s", runtime.GOOS)
-			} else if !strings.Contains(err.Error(), "not supported") {
-				t.Errorf("ClearImmutable should return 'not supported' error on %s, got: %v", runtime.GOOS, err)
 			}
+		} else if !errors.Is(err, ErrRootRequired) {
+			t.Errorf("ClearImmutable without root should return ErrRootRequired on supported platform %s, got: %v", runtime.GOOS, err)
 		}
 	}
 }
@@ -887,17 +876,11 @@ func TestImmutableFlagNonExistentFile(t *testing.T) {
 	} else {
 		// Running as non-root
 		if isSupported {
-			// Should print warning and return nil (no error) on supported platforms
-			if err != nil {
-				t.Errorf("SetImmutable without root should return nil (with warning) on supported platform, got: %v", err)
+			if !errors.Is(err, ErrRootRequired) {
+				t.Errorf("SetImmutable without root should return ErrRootRequired on supported platform, got: %v", err)
 			}
-		} else {
-			// Should return "not supported" error on unsupported platforms
-			if err == nil {
-				t.Errorf("SetImmutable should return error on unsupported platform %s", runtime.GOOS)
-			} else if !strings.Contains(err.Error(), "not supported") {
-				t.Errorf("SetImmutable should return 'not supported' error on %s, got: %v", runtime.GOOS, err)
-			}
+		} else if err == nil {
+			t.Errorf("SetImmutable should return error on unsupported platform %s", runtime.GOOS)
 		}
 	}
 
@@ -923,17 +906,11 @@ func TestImmutableFlagNonExistentFile(t *testing.T) {
 	} else {
 		// Running as non-root
 		if isSupported {
-			// Should print warning and return nil (no error) on supported platforms
-			if err != nil {
-				t.Errorf("ClearImmutable without root should return nil (with warning) on supported platform, got: %v", err)
+			if !errors.Is(err, ErrRootRequired) {
+				t.Errorf("ClearImmutable without root should return ErrRootRequired on supported platform, got: %v", err)
 			}
-		} else {
-			// Should return "not supported" error on unsupported platforms
-			if err == nil {
-				t.Errorf("ClearImmutable should return error on unsupported platform %s", runtime.GOOS)
-			} else if !strings.Contains(err.Error(), "not supported") {
-				t.Errorf("ClearImmutable should return 'not supported' error on %s, got: %v", runtime.GOOS, err)
-			}
+		} else if err == nil {
+			t.Errorf("ClearImmutable should return error on unsupported platform %s", runtime.GOOS)
 		}
 	}
 

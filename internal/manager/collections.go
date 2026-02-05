@@ -4,6 +4,8 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+
+	"github.com/florianbuetow/guard/internal/filesystem"
 )
 
 // reservedKeywords contains all collection names that are not allowed.
@@ -33,6 +35,21 @@ func validateCollectionNames(names []string) error {
 	return nil
 }
 
+// CollectionInfo represents a collection and optional file details for display.
+type CollectionInfo struct {
+	Name      string
+	Guard     bool
+	FileCount int
+	Files     []FileStatus
+}
+
+// CollectionSummary aggregates guarded vs unguarded totals.
+type CollectionSummary struct {
+	Total     int
+	Guarded   int
+	Unguarded int
+}
+
 // AddCollections registers new collections in the registry.
 // Per Requirement 3.2 and 3.3: Shows warning if collection already exists.
 // Per CLI-INTERFACE-SPECS.md line 80: Idempotent - no duplicates created.
@@ -57,6 +74,10 @@ func (m *Manager) AddCollections(names []string) error {
 			m.AddError(fmt.Sprintf("Error: Failed to register collection %s: %v", name, err))
 			continue
 		}
+	}
+
+	if err := m.SaveRegistry(); err != nil {
+		return fmt.Errorf("failed to save registry: %w", err)
 	}
 
 	return nil
@@ -128,8 +149,12 @@ func (m *Manager) RemoveCollections(names []string) error {
 		if guard {
 			// Clear immutable flag first (must be done before chmod)
 			if err := m.fs.ClearImmutable(path); err != nil {
-				m.AddError(fmt.Sprintf("Error: Failed to clear immutable flag for %s: %v", path, err))
-				continue
+				if errors.Is(err, filesystem.ErrRootRequired) {
+					m.AddWarning(NewWarning(WarningGeneric, fmt.Sprintf("Clearing immutable flag requires root privileges (sudo) for file %s - skipping", path)))
+				} else {
+					m.AddError(fmt.Sprintf("Error: Failed to clear immutable flag for %s: %v", path, err))
+					continue
+				}
 			}
 
 			if err := m.fs.RestorePermissions(path, mode, owner, group); err != nil {
@@ -157,6 +182,10 @@ func (m *Manager) RemoveCollections(names []string) error {
 		}
 	}
 
+	if err := m.SaveRegistry(); err != nil {
+		return fmt.Errorf("failed to save registry: %w", err)
+	}
+
 	return nil
 }
 
@@ -174,7 +203,7 @@ func (m *Manager) ClearCollections(names []string) error {
 	}
 
 	// Step 1: Disable guard on collections and their files
-	if err := m.DisableCollections(names); err != nil {
+	if err := m.disableCollections(names); err != nil {
 		return err
 	}
 
@@ -199,6 +228,10 @@ func (m *Manager) ClearCollections(names []string) error {
 				continue
 			}
 		}
+	}
+
+	if err := m.SaveRegistry(); err != nil {
+		return fmt.Errorf("failed to save registry: %w", err)
 	}
 
 	return nil
@@ -405,13 +438,21 @@ func (m *Manager) ToggleCollections(names []string) error {
 
 			// Set immutable flag (auto-skips if not root)
 			if err := m.fs.SetImmutable(path); err != nil {
-				m.AddError(fmt.Sprintf("Error: Failed to set immutable flag for %s: %v", path, err))
+				if errors.Is(err, filesystem.ErrRootRequired) {
+					m.AddWarning(NewWarning(WarningGeneric, fmt.Sprintf("Setting immutable flag requires root privileges (sudo) for file %s - skipping", path)))
+				} else {
+					m.AddError(fmt.Sprintf("Error: Failed to set immutable flag for %s: %v", path, err))
+				}
 			}
 		} else {
 			// Disable guard: clear immutable first, then restore permissions
 			if err := m.fs.ClearImmutable(path); err != nil {
-				m.AddError(fmt.Sprintf("Error: Failed to clear immutable flag for %s: %v", path, err))
-				continue
+				if errors.Is(err, filesystem.ErrRootRequired) {
+					m.AddWarning(NewWarning(WarningGeneric, fmt.Sprintf("Clearing immutable flag requires root privileges (sudo) for file %s - skipping", path)))
+				} else {
+					m.AddError(fmt.Sprintf("Error: Failed to clear immutable flag for %s: %v", path, err))
+					continue
+				}
 			}
 
 			if err := m.fs.RestorePermissions(path, mode, owner, group); err != nil {
@@ -443,6 +484,10 @@ func (m *Manager) ToggleCollections(names []string) error {
 			m.AddError(fmt.Sprintf("Error: Failed to toggle guard for collection %s: %v", name, err))
 			continue
 		}
+	}
+
+	if err := m.SaveRegistry(); err != nil {
+		return fmt.Errorf("failed to save registry: %w", err)
 	}
 
 	return nil
@@ -515,7 +560,11 @@ func (m *Manager) EnableCollections(names []string) error {
 
 		// Set immutable flag (auto-skips if not root)
 		if err := m.fs.SetImmutable(path); err != nil {
-			m.AddError(fmt.Sprintf("Error: Failed to set immutable flag for %s: %v", path, err))
+			if errors.Is(err, filesystem.ErrRootRequired) {
+				m.AddWarning(NewWarning(WarningGeneric, fmt.Sprintf("Setting immutable flag requires root privileges (sudo) for file %s - skipping", path)))
+			} else {
+				m.AddError(fmt.Sprintf("Error: Failed to set immutable flag for %s: %v", path, err))
+			}
 		}
 
 		// Set guard flag to true
@@ -537,12 +586,28 @@ func (m *Manager) EnableCollections(names []string) error {
 		}
 	}
 
+	if err := m.SaveRegistry(); err != nil {
+		return fmt.Errorf("failed to save registry: %w", err)
+	}
+
 	return nil
 }
 
 // DisableCollections disables guard for all files in the specified collections.
 // Per CLI-INTERFACE-SPECS.md lines 104-109: Warns for empty/missing collections, disables files and collections.
 func (m *Manager) DisableCollections(names []string) error {
+	if err := m.disableCollections(names); err != nil {
+		return err
+	}
+
+	if err := m.SaveRegistry(); err != nil {
+		return fmt.Errorf("failed to save registry: %w", err)
+	}
+
+	return nil
+}
+
+func (m *Manager) disableCollections(names []string) error {
 	if len(names) == 0 {
 		return fmt.Errorf("no collections specified")
 	}
@@ -604,8 +669,12 @@ func (m *Manager) DisableCollections(names []string) error {
 		if guard {
 			// Clear immutable flag first (must be done before chmod)
 			if err := m.fs.ClearImmutable(path); err != nil {
-				m.AddError(fmt.Sprintf("Error: Failed to clear immutable flag for %s: %v", path, err))
-				continue
+				if errors.Is(err, filesystem.ErrRootRequired) {
+					m.AddWarning(NewWarning(WarningGeneric, fmt.Sprintf("Clearing immutable flag requires root privileges (sudo) for file %s - skipping", path)))
+				} else {
+					m.AddError(fmt.Sprintf("Error: Failed to clear immutable flag for %s: %v", path, err))
+					continue
+				}
 			}
 
 			if err := m.fs.RestorePermissions(path, mode, owner, group); err != nil {
@@ -704,6 +773,10 @@ func (m *Manager) AddFilesToCollections(filePaths []string, collectionNames []st
 		return fmt.Errorf("failed to add files to collections: %w", err)
 	}
 
+	if err := m.SaveRegistry(); err != nil {
+		return fmt.Errorf("failed to save registry: %w", err)
+	}
+
 	return nil
 }
 
@@ -739,6 +812,10 @@ func (m *Manager) RemoveFilesFromCollections(filePaths []string, collectionNames
 	// Remove files from collections
 	if err := m.security.RemoveRegisteredFilesFromRegisteredCollections(collectionNames, filePaths); err != nil {
 		return fmt.Errorf("failed to remove files from collections: %w", err)
+	}
+
+	if err := m.SaveRegistry(); err != nil {
+		return fmt.Errorf("failed to save registry: %w", err)
 	}
 
 	return nil
@@ -815,6 +892,10 @@ func (m *Manager) AddCollectionsToCollections(sourceNames []string, targetNames 
 		return fmt.Errorf("failed to add files to target collections: %w", err)
 	}
 
+	if err := m.SaveRegistry(); err != nil {
+		return fmt.Errorf("failed to save registry: %w", err)
+	}
+
 	return nil
 }
 
@@ -880,36 +961,36 @@ func (m *Manager) RemoveCollectionsFromCollections(sourceNames []string, targetN
 		return fmt.Errorf("failed to remove files from target collections: %w", err)
 	}
 
+	if err := m.SaveRegistry(); err != nil {
+		return fmt.Errorf("failed to save registry: %w", err)
+	}
+
 	return nil
 }
 
-// ShowCollections displays the guard status and file count for collections.
+// ListCollections returns collection status with optional file details.
 // Per Requirement 6.3-6.4: Shows all collections if none specified, warnings for missing.
-// Per CLI-INTERFACE-SPECS.md lines 162-167: Format: G/- collection: name (n files).
-func (m *Manager) ShowCollections(names []string) error {
-	var collectionsToShow []string
+func (m *Manager) ListCollections(names []string, includeFiles bool) ([]CollectionInfo, *CollectionSummary, error) {
+	if m.security == nil {
+		return nil, nil, fmt.Errorf("registry not loaded")
+	}
 
-	// If no collections specified, show all
+	var collectionsToShow []string
 	if len(names) == 0 {
 		collectionsToShow = m.security.GetRegisteredCollections()
 	} else {
 		collectionsToShow = names
 	}
 
-	// Track counts for summary
-	guarded := 0
-	displayed := 0
+	var infos []CollectionInfo
+	guardedCount := 0
 
-	// Display each collection
 	for _, name := range collectionsToShow {
 		if !m.security.IsRegisteredCollection(name) {
 			m.AddWarning(NewWarning(WarningCollectionNotFound, "", name))
 			continue
 		}
 
-		displayed++
-
-		// Get guard status
 		guard, err := m.security.GetRegisteredCollectionGuard(name)
 		if err != nil {
 			m.AddError(fmt.Sprintf("Error: Failed to get guard status for collection %s: %v", name, err))
@@ -917,52 +998,46 @@ func (m *Manager) ShowCollections(names []string) error {
 		}
 
 		if guard {
-			guarded++
+			guardedCount++
 		}
 
-		// Get files
 		files, err := m.security.GetRegisteredCollectionFiles(name)
 		if err != nil {
 			m.AddError(fmt.Sprintf("Error: Failed to get files for collection %s: %v", name, err))
 			continue
 		}
 
-		// Format: G/- collection: name (n files)
-		guardFlag := "-"
-		if guard {
-			guardFlag = "G"
+		info := CollectionInfo{
+			Name:      name,
+			Guard:     guard,
+			FileCount: len(files),
 		}
 
-		// If showing all collections (no names specified), don't list individual files
-		if len(names) == 0 {
-			fmt.Printf("%s collection: %s (%d files)\n", guardFlag, name, len(files))
-		} else {
-			// If specific collections requested, show detailed view with files
-			fmt.Printf("%s collection: %s (%d files)\n", guardFlag, name, len(files))
+		if includeFiles {
 			for _, file := range files {
-				// Get file guard status
-				_, _, _, fileGuard, err := m.security.GetRegisteredFileConfig(file)
+				fileGuard, err := m.security.GetRegisteredFileGuard(file)
 				if err != nil {
 					continue
 				}
-
-				fileGuardFlag := "-"
-				if fileGuard {
-					fileGuardFlag = "G"
-				}
-
-				// Display relative path
-				displayPath := m.security.ToDisplayPath(file)
-				fmt.Printf("  %s %s\n", fileGuardFlag, displayPath)
+				info.Files = append(info.Files, FileStatus{
+					Path:       m.security.ToDisplayPath(file),
+					Registered: true,
+					Guard:      fileGuard,
+				})
 			}
+		}
+
+		infos = append(infos, info)
+	}
+
+	var summary *CollectionSummary
+	if len(names) == 0 && len(infos) > 0 {
+		summary = &CollectionSummary{
+			Total:     len(infos),
+			Guarded:   guardedCount,
+			Unguarded: len(infos) - guardedCount,
 		}
 	}
 
-	// Print summary when showing all collections (no names specified)
-	if len(names) == 0 && displayed > 0 {
-		unguarded := displayed - guarded
-		fmt.Printf("\n%d collection(s) total: %d guarded, %d unguarded\n", displayed, guarded, unguarded)
-	}
-
-	return nil
+	return infos, summary, nil
 }

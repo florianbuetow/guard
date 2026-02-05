@@ -1,9 +1,12 @@
 package manager
 
 import (
+	"errors"
 	"fmt"
 	"path/filepath"
 	"strings"
+
+	"github.com/florianbuetow/guard/internal/filesystem"
 )
 
 // EffectiveFolderGuardState represents the computed guard state of a folder.
@@ -156,6 +159,10 @@ func (m *Manager) ToggleFolders(paths []string) error {
 		}
 	}
 
+	if err := m.SaveRegistry(); err != nil {
+		return fmt.Errorf("failed to save registry: %w", err)
+	}
+
 	return nil
 }
 
@@ -240,13 +247,21 @@ func (m *Manager) toggleFolder(path string) error {
 
 			// Set immutable flag (auto-skips if not root)
 			if err := m.fs.SetImmutable(filePath); err != nil {
-				m.AddError(fmt.Sprintf("Error: Failed to set immutable flag for %s: %v", filePath, err))
+				if errors.Is(err, filesystem.ErrRootRequired) {
+					m.AddWarning(NewWarning(WarningGeneric, fmt.Sprintf("Setting immutable flag requires root privileges (sudo) for file %s - skipping", filePath)))
+				} else {
+					m.AddError(fmt.Sprintf("Error: Failed to set immutable flag for %s: %v", filePath, err))
+				}
 			}
 		} else {
 			// Disable guard: clear immutable first, then restore permissions
 			if err := m.fs.ClearImmutable(filePath); err != nil {
-				m.AddError(fmt.Sprintf("Error: Failed to clear immutable flag for %s: %v", filePath, err))
-				continue
+				if errors.Is(err, filesystem.ErrRootRequired) {
+					m.AddWarning(NewWarning(WarningGeneric, fmt.Sprintf("Clearing immutable flag requires root privileges (sudo) for file %s - skipping", filePath)))
+				} else {
+					m.AddError(fmt.Sprintf("Error: Failed to clear immutable flag for %s: %v", filePath, err))
+					continue
+				}
 			}
 
 			if err := m.fs.RestorePermissions(filePath, storedMode, storedOwner, storedGroup); err != nil {
@@ -283,6 +298,10 @@ func (m *Manager) EnableFolders(paths []string) error {
 		if err := m.enableFolder(path); err != nil {
 			return err
 		}
+	}
+
+	if err := m.SaveRegistry(); err != nil {
+		return fmt.Errorf("failed to save registry: %w", err)
 	}
 
 	return nil
@@ -351,7 +370,11 @@ func (m *Manager) enableFolder(path string) error {
 
 		// Set immutable flag
 		if err := m.fs.SetImmutable(filePath); err != nil {
-			m.AddError(fmt.Sprintf("Error: Failed to set immutable flag for %s: %v", filePath, err))
+			if errors.Is(err, filesystem.ErrRootRequired) {
+				m.AddWarning(NewWarning(WarningGeneric, fmt.Sprintf("Setting immutable flag requires root privileges (sudo) for file %s - skipping", filePath)))
+			} else {
+				m.AddError(fmt.Sprintf("Error: Failed to set immutable flag for %s: %v", filePath, err))
+			}
 		}
 
 		// Set guard flag
@@ -382,6 +405,10 @@ func (m *Manager) DisableFolders(paths []string) error {
 		if err := m.disableFolder(path); err != nil {
 			return err
 		}
+	}
+
+	if err := m.SaveRegistry(); err != nil {
+		return fmt.Errorf("failed to save registry: %w", err)
 	}
 
 	return nil
@@ -446,8 +473,12 @@ func (m *Manager) disableFolder(path string) error {
 
 		// Disable guard: clear immutable, then restore permissions
 		if err := m.fs.ClearImmutable(filePath); err != nil {
-			m.AddError(fmt.Sprintf("Error: Failed to clear immutable flag for %s: %v", filePath, err))
-			continue
+			if errors.Is(err, filesystem.ErrRootRequired) {
+				m.AddWarning(NewWarning(WarningGeneric, fmt.Sprintf("Clearing immutable flag requires root privileges (sudo) for file %s - skipping", filePath)))
+			} else {
+				m.AddError(fmt.Sprintf("Error: Failed to clear immutable flag for %s: %v", filePath, err))
+				continue
+			}
 		}
 
 		if err := m.fs.RestorePermissions(filePath, storedMode, storedOwner, storedGroup); err != nil {

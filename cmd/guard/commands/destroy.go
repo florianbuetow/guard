@@ -47,21 +47,19 @@ Examples:
 			existingCollections := []collectionInfo{}
 
 			for _, name := range args {
-				if mgr.IsRegisteredCollection(name) {
-					count, _ := mgr.GetRegistry().CountFilesInCollection(name)
-					existingCollections = append(existingCollections, collectionInfo{name: name, fileCount: count})
+				status, err := mgr.GetCollectionStatus(name, false)
+				if err != nil {
+					fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+					os.Exit(1)
+				}
+				if status.Exists {
+					existingCollections = append(existingCollections, collectionInfo{name: name, fileCount: status.FileCount})
 				}
 			}
 
 			// Remove collections
 			if err := mgr.RemoveCollections(args); err != nil {
 				fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-				os.Exit(1)
-			}
-
-			// Save registry
-			if err := mgr.SaveRegistry(); err != nil {
-				fmt.Fprintf(os.Stderr, "Error: Failed to save registry: %v\n", err)
 				os.Exit(1)
 			}
 
@@ -78,10 +76,10 @@ Examples:
 			}
 
 			// Print warnings
-			manager.PrintWarnings(mgr.GetWarnings())
+			printWarnings(mgr.GetWarnings())
 
 			// Print errors
-			manager.PrintErrors(mgr.GetErrors())
+			printErrors(mgr.GetErrors())
 
 			// Exit with error code if there were errors
 			if mgr.HasErrors() {

@@ -24,12 +24,10 @@ func BuildCollectionHierarchy(mgr *manager.Manager) []CollectionInfo {
 		return nil
 	}
 
-	reg := mgr.GetRegistry()
-	if reg == nil {
+	collections, err := mgr.GetRegisteredCollections()
+	if err != nil {
 		return nil
 	}
-
-	collections := reg.GetRegisteredCollections()
 	if len(collections) == 0 {
 		return nil
 	}
@@ -40,12 +38,12 @@ func BuildCollectionHierarchy(mgr *manager.Manager) []CollectionInfo {
 	// Build file sets for each collection
 	fileSets := make(map[string]map[string]bool)
 	for _, name := range collections {
-		files, err := reg.GetRegisteredCollectionFiles(name)
-		if err != nil {
+		status, err := mgr.GetCollectionStatus(name, true)
+		if err != nil || !status.Exists {
 			continue
 		}
 		fileSet := make(map[string]bool)
-		for _, f := range files {
+		for _, f := range status.Files {
 			fileSet[f] = true
 		}
 		fileSets[name] = fileSet

@@ -6,7 +6,6 @@ import (
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 
-	"github.com/florianbuetow/guard/internal/filesystem"
 	"github.com/florianbuetow/guard/internal/manager"
 )
 
@@ -23,28 +22,27 @@ type App struct {
 	styles      *Styles
 	keys        KeyMap
 	mgr         *manager.Manager
-	fs          *filesystem.FileSystem
 	rootPath    string
 
 	quitting bool
 }
 
 // NewApp creates a new App model
-func NewApp(rootPath string, mgr *manager.Manager, fs *filesystem.FileSystem) (App, error) {
+func NewApp(rootPath string, mgr *manager.Manager) (App, error) {
 	styles := DefaultStyles()
 	keys := DefaultKeyMap()
 
 	// Build the file tree
-	root, err := BuildFileTree(rootPath, fs, mgr)
+	root, err := BuildFileTree(rootPath, mgr)
 	if err != nil {
 		return App{}, fmt.Errorf("failed to build file tree: %w", err)
 	}
 
 	// Update guard states for all nodes (including collapsed folders)
-	UpdateGuardStates(root, mgr, fs)
+	UpdateGuardStates(root, mgr)
 
 	app := App{
-		filesPanel:       NewFilesPanel(root, fs, mgr, styles, keys),
+		filesPanel:       NewFilesPanel(root, mgr, styles, keys),
 		collectionsPanel: NewCollectionsPanel(mgr, styles, keys),
 		statusBar:        NewStatusBar(styles, keys),
 		errorModal:       NewErrorModal(styles),
@@ -52,7 +50,6 @@ func NewApp(rootPath string, mgr *manager.Manager, fs *filesystem.FileSystem) (A
 		styles:           styles,
 		keys:             keys,
 		mgr:              mgr,
-		fs:               fs,
 		rootPath:         rootPath,
 	}
 

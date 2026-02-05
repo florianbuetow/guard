@@ -320,26 +320,3 @@ func aggregateFilesAlreadyGuarded(warnings []Warning) string {
 	}
 	return sb.String()
 }
-
-// PrintWarnings formats and prints all aggregated warnings to stdout.
-func PrintWarnings(warnings []Warning) {
-	if len(warnings) == 0 {
-		return
-	}
-
-	aggregated := AggregateWarnings(warnings)
-	for _, msg := range aggregated {
-		if msg != "" {
-			fmt.Println(msg)
-		}
-	}
-}
-
-// PrintErrors prints all error messages to stdout.
-func PrintErrors(errors []string) {
-	for _, err := range errors {
-		if err != "" {
-			fmt.Println(err)
-		}
-	}
-}
