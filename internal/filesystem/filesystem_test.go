@@ -561,6 +561,59 @@ func TestCheckFilesExistEmpty(t *testing.T) {
 	}
 }
 
+func TestFileExistsPermissionDenied(t *testing.T) {
+	fs := NewFileSystem()
+
+	rootDir := t.TempDir()
+	privateDir := filepath.Join(rootDir, "private")
+	if err := os.Mkdir(privateDir, 0o700); err != nil {
+		t.Fatalf("failed to create private dir: %v", err)
+	}
+
+	filePath := filepath.Join(privateDir, "file.txt")
+	if err := os.WriteFile(filePath, []byte("data"), 0o600); err != nil {
+		t.Fatalf("failed to write file: %v", err)
+	}
+
+	dirHandle, err := os.Open(privateDir)
+	if err != nil {
+		t.Fatalf("failed to open private dir: %v", err)
+	}
+	defer dirHandle.Close()
+
+	if err := dirHandle.Chmod(0); err != nil {
+		t.Skipf("chmod to 000 not supported: %v", err)
+	}
+	defer func() {
+		_ = dirHandle.Chmod(0o700)
+	}()
+
+	if fs.FileExists(filePath) {
+		t.Fatalf("expected FileExists to return false on permission denied")
+	}
+}
+
+func TestIsNumeric(t *testing.T) {
+	cases := []struct {
+		input    string
+		expected bool
+	}{
+		{"0", true},
+		{"007", true},
+		{"123", true},
+		{"", false},
+		{"-1", false},
+		{"12a", false},
+		{" 1", false},
+	}
+
+	for _, tc := range cases {
+		if isNumeric(tc.input) != tc.expected {
+			t.Fatalf("isNumeric(%q) mismatch", tc.input)
+		}
+	}
+}
+
 // ============================================================================
 // Error Message Format Tests
 // ============================================================================

@@ -55,7 +55,7 @@ func (fs *FileSystem) FileExists(path string) bool {
 		return false
 	}
 	if os.IsPermission(err) {
-		return true
+		return false
 	}
 	return false
 }
