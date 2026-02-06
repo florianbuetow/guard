@@ -85,10 +85,10 @@ test_document_config_bypass() {
         direct_save_count=$(grep -c "m\.security\.Save()" "$config_file" 2>/dev/null)
         direct_save_count=${direct_save_count:-0}
         if [ "$direct_save_count" -gt 0 ]; then
-            echo -e "${GREEN}✓ PASS${NC}: BUG CONFIRMED - Found $direct_save_count direct m.security.Save() calls in config.go"
+            echo -e "${GREEN}✓ PASS${NC}: Regression confirmed - Found $direct_save_count direct m.security.Save() calls in config.go"
             TESTS_PASSED=$((TESTS_PASSED + 1))
         else
-            echo -e "${YELLOW}NOTE${NC}: Bug may be fixed - no direct m.security.Save() calls found"
+            echo -e "${YELLOW}NOTE${NC}: Expected when fixed - no direct m.security.Save() calls found (test remains as documentation)"
             TESTS_PASSED=$((TESTS_PASSED + 1))
         fi
     else

@@ -46,6 +46,7 @@ func (fs *FileSystem) HasRootPrivileges() bool {
 }
 
 // FileExists checks if a file exists at the given path.
+// Returns false on permission errors to avoid implying the file is accessible.
 func (fs *FileSystem) FileExists(path string) bool {
 	_, err := os.Stat(path)
 	if err == nil {
