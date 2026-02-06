@@ -62,12 +62,6 @@ file, collection, create, destroy, clear, update, uninstall).`,
 				}
 			}
 
-			// Save registry
-			if err := mgr.SaveRegistry(); err != nil {
-				fmt.Fprintf(os.Stderr, "Error: Failed to save registry: %v\n", err)
-				os.Exit(1)
-			}
-
 			// Print success message in multi-line format
 			if len(newlyCreated) > 0 {
 				fmt.Printf("Created %d collection(s):\n", len(newlyCreated))
@@ -82,10 +76,10 @@ file, collection, create, destroy, clear, update, uninstall).`,
 			}
 
 			// Print warnings
-			manager.PrintWarnings(mgr.GetWarnings())
+			printWarnings(mgr.GetWarnings())
 
 			// Print errors
-			manager.PrintErrors(mgr.GetErrors())
+			printErrors(mgr.GetErrors())
 
 			// Exit with error code if there were errors
 			if mgr.HasErrors() {

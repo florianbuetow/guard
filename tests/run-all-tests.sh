@@ -37,9 +37,9 @@ TEST_FILES=$(find "$SCRIPT_DIR" -maxdepth 1 -name "test-*.sh" -type f | sort)
 # as they are manual test files with different structure
 TEST_FILES=$(echo "$TEST_FILES" | grep -v "test-assertions-and-framework.sh" | grep -v "test-guardfile-parsers.sh")
 
-# Separate TUI tests from other tests
-TUI_TEST_FILES=$(echo "$TEST_FILES" | grep "test-tui" || true)
-CLI_TEST_FILES=$(echo "$TEST_FILES" | grep -v "test-tui")
+# Separate TUI-related tests from other tests (run all TUI-related tests last)
+TUI_TEST_FILES=$(echo "$TEST_FILES" | grep -i "tui" || true)
+CLI_TEST_FILES=$(echo "$TEST_FILES" | grep -iv "tui")
 
 test_file_count=0
 

@@ -1,6 +1,7 @@
 package filesystem
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"os/user"
@@ -9,6 +10,9 @@ import (
 	"strconv"
 	"syscall"
 )
+
+// ErrRootRequired indicates an operation needs root privileges.
+var ErrRootRequired = errors.New("root required")
 
 // FileSystem provides file system operations for the guard tool.
 // It handles file existence checks, permission changes, and owner/group management.
@@ -28,9 +32,19 @@ func (fs *FileSystem) HasRootPrivileges() bool {
 }
 
 // FileExists checks if a file exists at the given path.
+// Returns false on permission errors to avoid implying the file is accessible.
 func (fs *FileSystem) FileExists(path string) bool {
 	_, err := os.Stat(path)
-	return err == nil
+	if err == nil {
+		return true
+	}
+	if os.IsNotExist(err) {
+		return false
+	}
+	if os.IsPermission(err) {
+		return false
+	}
+	return false
 }
 
 // GetFileInfo retrieves the current file mode, owner, and group for a file.
@@ -120,16 +134,26 @@ func (fs *FileSystem) Chmod(path string, mode os.FileMode) error {
 // Chown changes the owner of the specified file.
 // The owner parameter should be a username. It will be converted to UID.
 func (fs *FileSystem) Chown(path string, owner string) error {
-	// Look up the user to get UID
-	ownerUser, err := user.Lookup(owner)
-	if err != nil {
-		return fmt.Errorf("failed to lookup user %s for file %s: %w", owner, path, err)
-	}
+	var uid int
+	if isNumeric(owner) {
+		parsed, err := strconv.Atoi(owner)
+		if err != nil {
+			return fmt.Errorf("failed to parse UID %s for file %s: %w", owner, path, err)
+		}
+		uid = parsed
+	} else {
+		// Look up the user to get UID
+		ownerUser, err := user.Lookup(owner)
+		if err != nil {
+			return fmt.Errorf("failed to lookup user %s for file %s: %w", owner, path, err)
+		}
 
-	// Convert username to UID
-	uid, err := strconv.Atoi(ownerUser.Uid)
-	if err != nil {
-		return fmt.Errorf("failed to convert UID for user %s: %w", owner, err)
+		// Convert username to UID
+		parsed, err := strconv.Atoi(ownerUser.Uid)
+		if err != nil {
+			return fmt.Errorf("failed to convert UID for user %s: %w", owner, err)
+		}
+		uid = parsed
 	}
 
 	// Change owner (-1 for gid means don't change group)
@@ -143,16 +167,26 @@ func (fs *FileSystem) Chown(path string, owner string) error {
 // Chgrp changes the group of the specified file.
 // The group parameter should be a group name. It will be converted to GID.
 func (fs *FileSystem) Chgrp(path string, group string) error {
-	// Look up the group to get GID
-	groupInfo, err := user.LookupGroup(group)
-	if err != nil {
-		return fmt.Errorf("failed to lookup group %s for file %s: %w", group, path, err)
-	}
+	var gid int
+	if isNumeric(group) {
+		parsed, err := strconv.Atoi(group)
+		if err != nil {
+			return fmt.Errorf("failed to parse GID %s for file %s: %w", group, path, err)
+		}
+		gid = parsed
+	} else {
+		// Look up the group to get GID
+		groupInfo, err := user.LookupGroup(group)
+		if err != nil {
+			return fmt.Errorf("failed to lookup group %s for file %s: %w", group, path, err)
+		}
 
-	// Convert group name to GID
-	gid, err := strconv.Atoi(groupInfo.Gid)
-	if err != nil {
-		return fmt.Errorf("failed to convert GID for group %s: %w", group, err)
+		// Convert group name to GID
+		parsed, err := strconv.Atoi(groupInfo.Gid)
+		if err != nil {
+			return fmt.Errorf("failed to convert GID for group %s: %w", group, err)
+		}
+		gid = parsed
 	}
 
 	// Change group (-1 for uid means don't change owner)
@@ -174,6 +208,18 @@ func (fs *FileSystem) CheckFilesExist(paths []string) (existing, missing []strin
 		}
 	}
 	return existing, missing
+}
+
+func isNumeric(value string) bool {
+	if value == "" {
+		return false
+	}
+	for _, r := range value {
+		if r < '0' || r > '9' {
+			return false
+		}
+	}
+	return true
 }
 
 // DirEntry represents a directory entry with metadata for sorting
@@ -333,11 +379,10 @@ func (fs *FileSystem) CollectFilesRecursive(folder string) ([]string, error) {
 // SetImmutable sets the system-level immutable flag on a file.
 // macOS: Sets SF_IMMUTABLE (schg) - requires sudo to unset
 // Linux: Sets FS_IMMUTABLE_FL (+i) - requires sudo to unset
-// Prints a warning and returns nil if not running with root privileges.
+// Returns ErrRootRequired if not running with root privileges.
 func (fs *FileSystem) SetImmutable(path string) error {
 	if !fs.HasRootPrivileges() {
-		fmt.Printf("Warning: Setting immutable flag requires root privileges (sudo) for file %s - skipping\n", path)
-		return nil
+		return fmt.Errorf("%w: setting immutable flag requires root privileges for file %s", ErrRootRequired, path)
 	}
 
 	return fs.setImmutable(path)
@@ -346,11 +391,10 @@ func (fs *FileSystem) SetImmutable(path string) error {
 // ClearImmutable removes the system-level immutable flag from a file.
 // macOS: Clears SF_IMMUTABLE (chflags noschg) - requires sudo
 // Linux: Clears FS_IMMUTABLE_FL (chattr -i) - requires sudo
-// Prints a warning and returns nil if not running with root privileges.
+// Returns ErrRootRequired if not running with root privileges.
 func (fs *FileSystem) ClearImmutable(path string) error {
 	if !fs.HasRootPrivileges() {
-		fmt.Printf("Warning: Clearing immutable flag requires root privileges (sudo) for file %s - skipping\n", path)
-		return nil
+		return fmt.Errorf("%w: clearing immutable flag requires root privileges for file %s", ErrRootRequired, path)
 	}
 
 	return fs.clearImmutable(path)

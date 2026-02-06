@@ -33,28 +33,53 @@ If verification fails, the .guardfile is preserved and an error is returned.`,
 			}
 
 			// Run uninstall (includes reset, cleanup, verification, and deletion)
-			if err := mgr.Destroy(); err != nil {
+			result, err := mgr.Destroy()
+			if err != nil {
 				fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 
 				// Print warnings and errors
-				manager.PrintWarnings(mgr.GetWarnings())
-				manager.PrintErrors(mgr.GetErrors())
+				printWarnings(mgr.GetWarnings())
+				printErrors(mgr.GetErrors())
 
 				os.Exit(1)
 			}
 
 			// Print warnings (if any)
-			manager.PrintWarnings(mgr.GetWarnings())
+			printWarnings(mgr.GetWarnings())
 
 			// Print errors (if any)
-			manager.PrintErrors(mgr.GetErrors())
+			printErrors(mgr.GetErrors())
 
 			// Exit with error code if there were errors
 			if mgr.HasErrors() {
 				os.Exit(1)
 			}
 
-			// Success message is printed by Destroy()
+			// Print success output per CLI-INTERFACE-SPECS.md
+			fmt.Println("Reset complete:")
+			if result.ResetResult.FilesDisabled > 0 || result.ResetResult.CollectionsDisabled > 0 {
+				if result.ResetResult.FilesDisabled > 0 {
+					fmt.Printf("  Guard disabled for %d file(s)\n", result.ResetResult.FilesDisabled)
+				}
+				if result.ResetResult.CollectionsDisabled > 0 {
+					fmt.Printf("  Guard disabled for %d collection(s)\n", result.ResetResult.CollectionsDisabled)
+				}
+			} else {
+				fmt.Println("  No guarded files or collections found")
+			}
+
+			fmt.Println("Cleanup complete:")
+			if result.CleanupResult.FilesRemoved > 0 || result.CleanupResult.CollectionsRemoved > 0 {
+				fmt.Printf("  Removed %d file(s) (file not found)\n", result.CleanupResult.FilesRemoved)
+				fmt.Printf("  Removed %d collection(s) (empty)\n", result.CleanupResult.CollectionsRemoved)
+			} else {
+				fmt.Println("  No stale entries found")
+			}
+
+			if result.GuardfileRemoved {
+				fmt.Println("Removed .guardfile")
+				fmt.Println("Uninstall complete")
+			}
 		},
 	}
 }

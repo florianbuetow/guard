@@ -71,11 +71,6 @@ func (s StatusBar) View() string {
 	// Build help text
 	helpText := s.keys.StatusBarHelp()
 
-	// If there's a message, show it instead
-	if s.message != "" {
-		helpText = s.message
-	}
-
 	// Truncate if needed
 	if StringWidth(helpText) > s.width {
 		helpText = TruncateRight(helpText, s.width)
@@ -134,11 +129,6 @@ func (s StatusBar) ContentLines() []string {
 	// R: Refresh  Q/Esc: Quit
 	line1 := " ↑↓: Navigate  ←→: Collapse/Expand  Tab: Switch Panel  Space: Toggle Guard"
 	line2 := " R: Refresh  Q/Esc: Quit"
-
-	// If there's a temporary message, show it instead
-	if s.message != "" {
-		return []string{" " + s.message, ""}
-	}
 
 	return []string{line1, line2}
 }

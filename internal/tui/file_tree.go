@@ -7,7 +7,6 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 
-	"github.com/florianbuetow/guard/internal/filesystem"
 	"github.com/florianbuetow/guard/internal/manager"
 )
 
@@ -21,19 +20,17 @@ type FileTree struct {
 	height    int
 	styles    *Styles
 	keys      KeyMap
-	fs        *filesystem.FileSystem
 	mgr       *manager.Manager
 	focused   bool
 }
 
 // NewFileTree creates a new FileTree model
-func NewFileTree(root *FileNode, fs *filesystem.FileSystem, mgr *manager.Manager, styles *Styles, keys KeyMap) FileTree {
+func NewFileTree(root *FileNode, mgr *manager.Manager, styles *Styles, keys KeyMap) FileTree {
 	ft := FileTree{
 		root:   root,
 		scroll: NewScrollState(10),
 		styles: styles,
 		keys:   keys,
-		fs:     fs,
 		mgr:    mgr,
 	}
 	ft.refreshFlatNodes()
@@ -223,7 +220,7 @@ func (ft *FileTree) handleRight() {
 	if node.IsDir && !node.IsSymlink {
 		if !node.Expanded {
 			// Expand the folder
-			_ = node.Expand(ft.fs, ft.mgr)
+			_ = node.Expand(ft.mgr)
 			ft.refreshFlatNodes()
 		} else if len(node.Children) > 0 {
 			// Move to first child
@@ -276,15 +273,11 @@ func (ft *FileTree) toggleFileGuard(node *FileNode) tea.Cmd {
 		return nil
 	}
 
-	reg := ft.mgr.GetRegistry()
-	if reg == nil {
-		return nil
-	}
-
 	// Get current guard state before toggle (for the message)
 	guard := false
-	if ft.mgr.IsRegisteredFile(node.Path) {
-		guard, _ = reg.GetRegisteredFileGuard(node.Path)
+	status, err := ft.mgr.GetFileStatus(node.Path)
+	if err == nil && status.Registered {
+		guard = status.Guard
 	}
 
 	// Use manager's ToggleFiles to toggle guard and apply filesystem permissions
@@ -311,48 +304,12 @@ func (ft *FileTree) toggleFolderGuard(node *FileNode, recursive bool) tea.Cmd {
 		return nil
 	}
 
-	// Collect files
-	var files []string
-	if recursive {
-		var err error
-		files, err = ft.fs.CollectFilesRecursive(node.Path)
-		if err != nil {
-			return func() tea.Msg { return ErrorMsg{Err: err} }
-		}
-	} else {
-		var err error
-		files, err = ft.fs.CollectImmediateFiles(node.Path)
-		if err != nil {
-			return func() tea.Msg { return ErrorMsg{Err: err} }
-		}
-	}
-
-	if len(files) == 0 {
-		return nil
-	}
-
-	reg := ft.mgr.GetRegistry()
-	if reg == nil {
-		return nil
-	}
-
-	// Determine current guard state based on majority (for the message)
-	guardedCount := 0
-	for _, path := range files {
-		if ft.mgr.IsRegisteredFile(path) {
-			guard, _ := reg.GetRegisteredFileGuard(path)
-			if guard {
-				guardedCount++
-			}
-		}
-	}
-
-	// If more than half are guarded, unguard all; otherwise guard all
-	newGuard := guardedCount <= len(files)/2
-
-	// Use manager's ToggleFiles to toggle guard and apply filesystem permissions
-	if err := ft.mgr.ToggleFiles(files); err != nil {
+	result, err := ft.mgr.ToggleFilesInFolder(node.Path, recursive)
+	if err != nil {
 		return func() tea.Msg { return ErrorMsg{Err: err} }
+	}
+	if result == nil || result.AffectedFiles == 0 {
+		return nil
 	}
 
 	// Refresh the tree
@@ -362,21 +319,21 @@ func (ft *FileTree) toggleFolderGuard(node *FileNode, recursive bool) tea.Cmd {
 		return GuardToggledMsg{
 			Path:          node.Path,
 			IsCollection:  false,
-			NewGuardState: newGuard,
-			AffectedFiles: len(files),
+			NewGuardState: result.NewGuardState,
+			AffectedFiles: result.AffectedFiles,
 		}
 	}
 }
 
 // refresh refreshes the tree from disk
 func (ft *FileTree) refresh() {
-	if ft.root == nil || ft.fs == nil {
+	if ft.root == nil || ft.mgr == nil {
 		return
 	}
 
 	// Reload children
-	_ = ft.root.RefreshChildren(ft.fs, ft.mgr)
-	UpdateGuardStates(ft.root, ft.mgr, ft.fs)
+	_ = ft.root.RefreshChildren(ft.mgr)
+	UpdateGuardStates(ft.root, ft.mgr)
 	ft.refreshFlatNodes()
 }
 

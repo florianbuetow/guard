@@ -6,39 +6,49 @@ import (
 	"strconv"
 )
 
-// ShowConfig displays the current configuration from the registry
-func (m *Manager) ShowConfig() error {
-	if m.security == nil {
-		return fmt.Errorf(".guardfile not found. Run 'guard init' first")
-	}
-
-	mode := m.security.GetDefaultFileMode()
-	owner := m.security.GetDefaultFileOwner()
-	group := m.security.GetDefaultFileGroup()
-
-	// Format output per CLI-INTERFACE-SPECS.md
-	fmt.Println("Configuration:")
-	fmt.Printf("  Mode:  %04o\n", mode.Perm())
-	fmt.Printf("  Owner: %s\n", formatConfigValue(owner))
-	fmt.Printf("  Group: %s\n", formatConfigValue(group))
-
-	return nil
+// ConfigInfo represents the current guard configuration.
+type ConfigInfo struct {
+	Mode  os.FileMode
+	Owner string
+	Group string
 }
 
-// SetConfig updates guard configuration with one or more values
-// Parameters with non-nil pointers are updated, nil means "don't change"
-func (m *Manager) SetConfig(modeStr *string, owner *string, group *string) error {
+// ConfigUpdateResult describes which config fields were updated.
+type ConfigUpdateResult struct {
+	ModeUpdated  bool
+	Mode         os.FileMode
+	OwnerUpdated bool
+	Owner        string
+	GroupUpdated bool
+	Group        string
+}
+
+// GetConfig returns the current configuration from the registry.
+func (m *Manager) GetConfig() (ConfigInfo, error) {
 	if m.security == nil {
-		return fmt.Errorf(".guardfile not found. Run 'guard init' first")
+		return ConfigInfo{}, fmt.Errorf(".guardfile not found. Run 'guard init' first")
+	}
+
+	return ConfigInfo{
+		Mode:  m.security.GetDefaultFileMode(),
+		Owner: m.security.GetDefaultFileOwner(),
+		Group: m.security.GetDefaultFileGroup(),
+	}, nil
+}
+
+// SetConfig updates guard configuration with one or more values.
+// Parameters with non-nil pointers are updated, nil means "don't change".
+func (m *Manager) SetConfig(modeStr *string, owner *string, group *string) (*ConfigUpdateResult, error) {
+	if m.security == nil {
+		return nil, fmt.Errorf(".guardfile not found. Run 'guard init' first")
 	}
 
 	// Check that at least one parameter is provided
 	if modeStr == nil && owner == nil && group == nil {
-		return fmt.Errorf("no configuration values provided")
+		return nil, fmt.Errorf("no configuration values provided")
 	}
 
-	// Track what we're updating
-	var updates []string
+	result := &ConfigUpdateResult{}
 
 	// Check if any files/collections are guarded (warning only)
 	m.checkAndWarnGuardedFiles()
@@ -47,135 +57,55 @@ func (m *Manager) SetConfig(modeStr *string, owner *string, group *string) error
 	if modeStr != nil {
 		mode, err := parseOctalMode(*modeStr)
 		if err != nil {
-			return fmt.Errorf("invalid mode: %w", err)
+			return nil, fmt.Errorf("invalid mode: %w", err)
 		}
 
 		if err := m.security.SetDefaultFileMode(mode); err != nil {
-			return fmt.Errorf("failed to set mode: %w", err)
+			return nil, fmt.Errorf("failed to set mode: %w", err)
 		}
 
-		updates = append(updates, fmt.Sprintf("Mode:  %04o", mode.Perm()))
+		result.ModeUpdated = true
+		result.Mode = mode
 	}
 
 	// Update owner if provided (can be empty string to clear)
 	if owner != nil {
 		m.security.SetDefaultFileOwner(*owner)
-		if *owner == "" {
-			updates = append(updates, "Owner: (cleared)")
-		} else {
-			updates = append(updates, fmt.Sprintf("Owner: %s", *owner))
-		}
+		result.OwnerUpdated = true
+		result.Owner = *owner
 	}
 
 	// Update group if provided (can be empty string to clear)
 	if group != nil {
 		m.security.SetDefaultFileGroup(*group)
-		if *group == "" {
-			updates = append(updates, "Group: (cleared)")
-		} else {
-			updates = append(updates, fmt.Sprintf("Group: %s", *group))
-		}
+		result.GroupUpdated = true
+		result.Group = *group
 	}
 
 	// Save registry
-	if err := m.security.Save(); err != nil {
-		return fmt.Errorf("failed to save config: %w", err)
+	if err := m.SaveRegistry(); err != nil {
+		return nil, fmt.Errorf("failed to save config: %w", err)
 	}
 
-	// Print what was updated
-	if len(updates) > 0 {
-		fmt.Println("Config updated:")
-		for _, update := range updates {
-			fmt.Printf("  %s\n", update)
-		}
-	}
-
-	return nil
+	return result, nil
 }
 
-// SetConfigMode updates guard_mode configuration
-func (m *Manager) SetConfigMode(modeStr string) error {
-	if m.security == nil {
-		return fmt.Errorf(".guardfile not found. Run 'guard init' first")
-	}
-
-	// Parse octal string to os.FileMode
-	mode, err := parseOctalMode(modeStr)
-	if err != nil {
-		return fmt.Errorf("invalid mode: %w", err)
-	}
-
-	// Check if any files/collections are guarded (warning only)
-	m.checkAndWarnGuardedFiles()
-
-	// Set the mode (this validates)
-	if err := m.security.SetDefaultFileMode(mode); err != nil {
-		return fmt.Errorf("failed to set mode: %w", err)
-	}
-
-	// Save registry
-	if err := m.security.Save(); err != nil {
-		return fmt.Errorf("failed to save config: %w", err)
-	}
-
-	fmt.Println("Config updated:")
-	fmt.Printf("  Mode: %04o\n", mode.Perm())
-	return nil
+// SetConfigMode updates guard_mode configuration.
+func (m *Manager) SetConfigMode(modeStr string) (*ConfigUpdateResult, error) {
+	return m.SetConfig(&modeStr, nil, nil)
 }
 
-// SetConfigOwner updates guard_owner configuration
-func (m *Manager) SetConfigOwner(owner string) error {
-	if m.security == nil {
-		return fmt.Errorf(".guardfile not found. Run 'guard init' first")
-	}
-
-	// Check if any files/collections are guarded (warning only)
-	m.checkAndWarnGuardedFiles()
-
-	// Set the owner (trims whitespace)
-	m.security.SetDefaultFileOwner(owner)
-
-	// Save registry
-	if err := m.security.Save(); err != nil {
-		return fmt.Errorf("failed to save config: %w", err)
-	}
-
-	fmt.Println("Config updated:")
-	if owner == "" {
-		fmt.Println("  Owner: (cleared)")
-	} else {
-		fmt.Printf("  Owner: %s\n", owner)
-	}
-	return nil
+// SetConfigOwner updates guard_owner configuration.
+func (m *Manager) SetConfigOwner(owner string) (*ConfigUpdateResult, error) {
+	return m.SetConfig(nil, &owner, nil)
 }
 
-// SetConfigGroup updates guard_group configuration
-func (m *Manager) SetConfigGroup(group string) error {
-	if m.security == nil {
-		return fmt.Errorf(".guardfile not found. Run 'guard init' first")
-	}
-
-	// Check if any files/collections are guarded (warning only)
-	m.checkAndWarnGuardedFiles()
-
-	// Set the group (trims whitespace)
-	m.security.SetDefaultFileGroup(group)
-
-	// Save registry
-	if err := m.security.Save(); err != nil {
-		return fmt.Errorf("failed to save config: %w", err)
-	}
-
-	fmt.Println("Config updated:")
-	if group == "" {
-		fmt.Println("  Group: (cleared)")
-	} else {
-		fmt.Printf("  Group: %s\n", group)
-	}
-	return nil
+// SetConfigGroup updates guard_group configuration.
+func (m *Manager) SetConfigGroup(group string) (*ConfigUpdateResult, error) {
+	return m.SetConfig(nil, nil, &group)
 }
 
-// checkAndWarnGuardedFiles checks if any files/collections are guarded and adds a warning
+// checkAndWarnGuardedFiles checks if any files/collections are guarded and adds a warning.
 func (m *Manager) checkAndWarnGuardedFiles() {
 	guardedFileCount := 0
 	guardedCollCount := 0
@@ -206,15 +136,7 @@ func (m *Manager) checkAndWarnGuardedFiles() {
 	}
 }
 
-// formatConfigValue formats a config value for display
-func formatConfigValue(value string) string {
-	if value == "" {
-		return "(empty)"
-	}
-	return value
-}
-
-// parseOctalMode parses an octal mode string and returns os.FileMode
+// parseOctalMode parses an octal mode string and returns os.FileMode.
 func parseOctalMode(modeStr string) (os.FileMode, error) {
 	// Parse as uint32 in base 8
 	modeInt, err := strconv.ParseUint(modeStr, 8, 32)
