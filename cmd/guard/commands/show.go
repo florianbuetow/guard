@@ -40,7 +40,10 @@ When no names are specified, all registered items are shown.`,
 			if len(args) == 0 {
 				// Show all files and collections
 				showAllFiles(mgr)
-				showAllCollections(mgr)
+				if err := showAllCollections(mgr); err != nil {
+					fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+					os.Exit(1)
+				}
 			} else {
 				// Use auto-detection to resolve arguments
 				files, folders, collections, err := mgr.ResolveArguments(args)
@@ -64,15 +67,18 @@ When no names are specified, all registered items are shown.`,
 
 				// Show collections
 				if len(collections) > 0 {
-					showSpecificCollections(mgr, collections)
+					if err := showSpecificCollections(mgr, collections); err != nil {
+						fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+						os.Exit(1)
+					}
 				}
 			}
 
 			// Print warnings
-			manager.PrintWarnings(mgr.GetWarnings())
+			printWarnings(mgr.GetWarnings())
 
 			// Print errors
-			manager.PrintErrors(mgr.GetErrors())
+			printErrors(mgr.GetErrors())
 
 			// Exit with error code if there were errors
 			if mgr.HasErrors() {
@@ -127,17 +133,50 @@ func showSpecificFiles(mgr *manager.Manager, files []string) {
 }
 
 // showAllCollections shows all collections (summary view)
-func showAllCollections(mgr *manager.Manager) {
-	if err := mgr.ShowCollections(nil); err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+func showAllCollections(mgr *manager.Manager) error {
+	collections, summary, err := mgr.ListCollections(nil, false)
+	if err != nil {
+		return err
 	}
+
+	for _, info := range collections {
+		guardFlag := "-"
+		if info.Guard {
+			guardFlag = "G"
+		}
+		fmt.Printf("%s collection: %s (%d files)\n", guardFlag, info.Name, info.FileCount)
+	}
+
+	if summary != nil {
+		fmt.Printf("\n%d collection(s) total: %d guarded, %d unguarded\n", summary.Total, summary.Guarded, summary.Unguarded)
+	}
+
+	return nil
 }
 
 // showSpecificCollections shows specific collections (detailed view)
-func showSpecificCollections(mgr *manager.Manager, collections []string) {
-	if err := mgr.ShowCollections(collections); err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+func showSpecificCollections(mgr *manager.Manager, collections []string) error {
+	infos, _, err := mgr.ListCollections(collections, true)
+	if err != nil {
+		return err
 	}
+
+	for _, info := range infos {
+		guardFlag := "-"
+		if info.Guard {
+			guardFlag = "G"
+		}
+		fmt.Printf("%s collection: %s (%d files)\n", guardFlag, info.Name, info.FileCount)
+		for _, file := range info.Files {
+			fileGuardFlag := "-"
+			if file.Guard {
+				fileGuardFlag = "G"
+			}
+			fmt.Printf("  %s %s\n", fileGuardFlag, file.Path)
+		}
+	}
+
+	return nil
 }
 
 // newShowFileCmd creates the "show file" subcommand.
@@ -187,10 +226,10 @@ If no files are specified, all registered files are shown.`,
 			}
 
 			// Print warnings
-			manager.PrintWarnings(mgr.GetWarnings())
+			printWarnings(mgr.GetWarnings())
 
 			// Print errors
-			manager.PrintErrors(mgr.GetErrors())
+			printErrors(mgr.GetErrors())
 
 			// Exit with error code if there were errors
 			if mgr.HasErrors() {
@@ -223,17 +262,23 @@ individual files in those collections are also listed.`,
 				os.Exit(1)
 			}
 
-			// Show collections
-			if err := mgr.ShowCollections(args); err != nil {
-				fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-				os.Exit(1)
+			if len(args) == 0 {
+				if err := showAllCollections(mgr); err != nil {
+					fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+					os.Exit(1)
+				}
+			} else {
+				if err := showSpecificCollections(mgr, args); err != nil {
+					fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+					os.Exit(1)
+				}
 			}
 
 			// Print warnings
-			manager.PrintWarnings(mgr.GetWarnings())
+			printWarnings(mgr.GetWarnings())
 
 			// Print errors
-			manager.PrintErrors(mgr.GetErrors())
+			printErrors(mgr.GetErrors())
 
 			// Exit with error code if there were errors
 			if mgr.HasErrors() {

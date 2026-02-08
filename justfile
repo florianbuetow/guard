@@ -50,26 +50,44 @@ run: build
 
 # Run tests
 test: build install
-    @echo ""
+    #!/usr/bin/env bash
+    set -e
+    echo ""
     go fmt ./...
     go test -v ./...
-    @echo "Running shell-based tests..."
-    @(cd tests && ./run-all-tests.sh)
-    @echo ""
+    echo "Running shell-based tests..."
+    INSTALL_BIN="${GOBIN:-$(go env GOPATH)/bin}"
+    if [ -z "${GOBIN:-}" ] && [ ! -w "$INSTALL_BIN" ]; then
+        INSTALL_BIN="/tmp/guard-bin"
+    fi
+    export PATH="$INSTALL_BIN:$PATH"
+    (cd tests && ./run-all-tests.sh)
+    echo ""
 
 # Install guard to GOPATH/bin
 install:
-    @echo ""
-    @echo "Installing guard to $(go env GOPATH)/bin..."
-    @go install -ldflags="-X main.version=$(git describe --tags --dirty 2>/dev/null || echo dev)" ./cmd/guard
-    @echo "✓ Installed: $(go env GOPATH)/bin/guard"
-    @echo ""
+    #!/usr/bin/env bash
+    set -e
+    echo ""
+    INSTALL_BIN="${GOBIN:-$(go env GOPATH)/bin}"
+    if [ -z "${GOBIN:-}" ] && [ ! -w "$INSTALL_BIN" ]; then
+        INSTALL_BIN="/tmp/guard-bin"
+    fi
+    mkdir -p "$INSTALL_BIN"
+    echo "Installing guard to $INSTALL_BIN..."
+    GOBIN="$INSTALL_BIN" go install -ldflags="-X main.version=$(git describe --tags --dirty 2>/dev/null || echo dev)" ./cmd/guard
+    echo "✓ Installed: $INSTALL_BIN/guard"
+    echo ""
 
 # Remove guard from GOPATH/bin
 uninstall:
     #!/usr/bin/env bash
     echo ""
-    GUARD_PATH="$(go env GOPATH)/bin/guard"
+    INSTALL_BIN="${GOBIN:-$(go env GOPATH)/bin}"
+    if [ -z "${GOBIN:-}" ] && [ ! -w "$INSTALL_BIN" ]; then
+        INSTALL_BIN="/tmp/guard-bin"
+    fi
+    GUARD_PATH="$INSTALL_BIN/guard"
     if [ -f "$GUARD_PATH" ]; then
         rm -f "$GUARD_PATH"
         echo "✓ Uninstalled: $GUARD_PATH"
@@ -122,7 +140,9 @@ fmt:
 # Falls back to go vet if golangci-lint is not installed
 lint:
     @echo ""
-    @command -v golangci-lint >/dev/null 2>&1 && golangci-lint run || go vet ./...
+    @command -v golangci-lint >/dev/null 2>&1 && \
+        GOLANGCI_LINT_CACHE="${GOLANGCI_LINT_CACHE:-/tmp/golangci-lint-cache}" golangci-lint run || \
+        go vet ./...
     @echo ""
 
 # Run Semgrep static analysis
@@ -131,7 +151,25 @@ semgrep:
     @echo ""
     @echo "Running Semgrep code analysis..."
     @command -v semgrep >/dev/null 2>&1 || { echo "Installing Semgrep..."; pip3 install semgrep 2>/dev/null || pip install semgrep; }
-    @semgrep --config .semgrep.yml --error
+    @CA_BUNDLE="${SSL_CERT_FILE:-}"; \
+        if [ -z "$CA_BUNDLE" ]; then \
+            if [ -f /etc/ssl/cert.pem ]; then \
+                CA_BUNDLE="/etc/ssl/cert.pem"; \
+            elif [ -f /etc/ssl/certs/ca-certificates.crt ]; then \
+                CA_BUNDLE="/etc/ssl/certs/ca-certificates.crt"; \
+            elif [ "$(uname)" = "Darwin" ] && command -v security >/dev/null 2>&1; then \
+                CA_BUNDLE="/tmp/guard-ca-bundle.pem"; \
+                security find-certificate -a -p /System/Library/Keychains/SystemRootCertificates.keychain > "$CA_BUNDLE" || true; \
+            fi; \
+        fi; \
+        SEMGREP_LOG_FILE="/tmp/semgrep.log"; \
+        XDG_CONFIG_HOME="/tmp"; \
+        XDG_CACHE_HOME="/tmp"; \
+        if [ -n "$CA_BUNDLE" ] && [ -f "$CA_BUNDLE" ]; then \
+            SSL_CERT_FILE="$CA_BUNDLE" SEMGREP_LOG_FILE="$SEMGREP_LOG_FILE" XDG_CONFIG_HOME="$XDG_CONFIG_HOME" XDG_CACHE_HOME="$XDG_CACHE_HOME" semgrep --config .semgrep.yml --error; \
+        else \
+            SEMGREP_LOG_FILE="$SEMGREP_LOG_FILE" XDG_CONFIG_HOME="$XDG_CONFIG_HOME" XDG_CACHE_HOME="$XDG_CACHE_HOME" semgrep --config .semgrep.yml --error; \
+        fi
     @echo ""
 
 # Check cyclomatic complexity (threshold: 50)
@@ -169,6 +207,8 @@ tidy:
 ci:
     #!/usr/bin/env bash
     set -euo pipefail
+    export GOCACHE="${GOCACHE:-/tmp/go-build-cache}"
+    export GOLANGCI_LINT_CACHE="${GOLANGCI_LINT_CACHE:-/tmp/golangci-lint-cache}"
     START_TIME=$(date +%s)
     just fmt
     just lint

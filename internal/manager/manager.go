@@ -108,11 +108,6 @@ func (m *Manager) InitializeRegistry(mode, owner, group string, overwrite bool) 
 	return nil
 }
 
-// GetRegistry returns the underlying security layer (for testing/debugging).
-func (m *Manager) GetRegistry() *security.Security {
-	return m.security
-}
-
 // GetFileSystem returns the underlying filesystem (for testing).
 func (m *Manager) GetFileSystem() *filesystem.FileSystem {
 	return m.fs

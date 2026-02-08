@@ -75,12 +75,6 @@ func addFiles(args []string) {
 	}
 	newlyRegistered := nowRegistered - alreadyRegistered
 
-	// Save registry
-	if err := mgr.SaveRegistry(); err != nil {
-		fmt.Fprintf(os.Stderr, "Error: Failed to save registry: %v\n", err)
-		os.Exit(1)
-	}
-
 	// Print success message
 	if newlyRegistered > 0 {
 		fmt.Printf("Registered %d file(s)\n", newlyRegistered)
@@ -92,10 +86,10 @@ func addFiles(args []string) {
 	}
 
 	// Print warnings
-	manager.PrintWarnings(mgr.GetWarnings())
+	printWarnings(mgr.GetWarnings())
 
 	// Print errors
-	manager.PrintErrors(mgr.GetErrors())
+	printErrors(mgr.GetErrors())
 
 	// Exit with error code if there were errors
 	if mgr.HasErrors() {

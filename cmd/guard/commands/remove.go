@@ -74,12 +74,6 @@ func removeFiles(args []string) {
 		os.Exit(1)
 	}
 
-	// Save registry
-	if err := mgr.SaveRegistry(); err != nil {
-		fmt.Fprintf(os.Stderr, "Error: Failed to save registry: %v\n", err)
-		os.Exit(1)
-	}
-
 	// Print success message
 	if inRegistry > 0 {
 		fmt.Printf("Removed %d file(s)\n", inRegistry)
@@ -91,10 +85,10 @@ func removeFiles(args []string) {
 	}
 
 	// Print warnings
-	manager.PrintWarnings(mgr.GetWarnings())
+	printWarnings(mgr.GetWarnings())
 
 	// Print errors
-	manager.PrintErrors(mgr.GetErrors())
+	printErrors(mgr.GetErrors())
 
 	// Exit with error code if there were errors
 	if mgr.HasErrors() {

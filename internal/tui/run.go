@@ -7,7 +7,6 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 
-	"github.com/florianbuetow/guard/internal/filesystem"
 	"github.com/florianbuetow/guard/internal/manager"
 )
 
@@ -32,11 +31,8 @@ func Run() error {
 		return fmt.Errorf("failed to load registry: %w", err)
 	}
 
-	// Create filesystem
-	fs := filesystem.NewFileSystem()
-
 	// Create the app
-	app, err := NewApp(cwd, mgr, fs)
+	app, err := NewApp(cwd, mgr)
 	if err != nil {
 		return fmt.Errorf("failed to create TUI: %w", err)
 	}
@@ -87,12 +83,9 @@ func RunWithPath(rootPath string) error {
 		return fmt.Errorf("failed to load registry: %w", err)
 	}
 
-	// Create filesystem
-	fs := filesystem.NewFileSystem()
-
 	// Create the app (use guardfile directory as root)
 	guardfileDir := filepath.Dir(guardfilePath)
-	app, err := NewApp(guardfileDir, mgr, fs)
+	app, err := NewApp(guardfileDir, mgr)
 	if err != nil {
 		return fmt.Errorf("failed to create TUI: %w", err)
 	}

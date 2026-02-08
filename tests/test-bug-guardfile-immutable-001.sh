@@ -81,17 +81,15 @@ test_document_config_bypass() {
     # Use SCRIPT_DIR to get the path relative to the test script location
     local config_file="$SCRIPT_DIR/../internal/manager/config.go"
     if [ -f "$config_file" ]; then
-        local direct_save_count=$(grep -c "m\.security\.Save()" "$config_file" 2>/dev/null || echo "0")
-        if [ "$direct_save_count" -gt 0 ]; then
-            echo -e "${GREEN}✓ PASS${NC}: BUG CONFIRMED - Found $direct_save_count direct m.security.Save() calls in config.go"
-            TESTS_PASSED=$((TESTS_PASSED + 1))
-        else
-            echo -e "${YELLOW}NOTE${NC}: Bug may be fixed - no direct m.security.Save() calls found"
-            TESTS_PASSED=$((TESTS_PASSED + 1))
+        local direct_save_count
+        direct_save_count=$(grep -c "m\.security\.Save()" "$config_file" 2>/dev/null || true)
+        if [ -z "$direct_save_count" ]; then
+            direct_save_count="0"
         fi
+        assert_equals "0" "$direct_save_count" "config.go should not call m.security.Save() directly"
     else
-        echo -e "${YELLOW}⚠ SKIP${NC}: Could not locate config.go file at $config_file"
-        TESTS_PASSED=$((TESTS_PASSED + 1))
+        echo -e "${RED}✗ FAIL${NC}: Could not locate config.go file at $config_file"
+        TESTS_FAILED=$((TESTS_FAILED + 1))
     fi
 }
 

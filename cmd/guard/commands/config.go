@@ -46,10 +46,16 @@ Output format:
 			}
 
 			// Show config
-			if err := mgr.ShowConfig(); err != nil {
+			config, err := mgr.GetConfig()
+			if err != nil {
 				fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 				os.Exit(1)
 			}
+
+			fmt.Println("Configuration:")
+			fmt.Printf("  Mode:  %04o\n", config.Mode.Perm())
+			fmt.Printf("  Owner: %s\n", formatConfigValue(config.Owner))
+			fmt.Printf("  Group: %s\n", formatConfigValue(config.Group))
 		},
 	}
 }
@@ -88,7 +94,10 @@ Bulk update (positional):
 				os.Exit(1)
 			}
 
-			var err error
+			var (
+				result *manager.ConfigUpdateResult
+				err    error
+			)
 
 			// Check if first arg is a keyword (mode/owner/group)
 			switch args[0] {
@@ -97,19 +106,19 @@ Bulk update (positional):
 					fmt.Fprintln(os.Stderr, "Error: mode value required")
 					os.Exit(1)
 				}
-				err = mgr.SetConfigMode(args[1])
+				result, err = mgr.SetConfigMode(args[1])
 			case "owner":
 				if len(args) < 2 {
 					fmt.Fprintln(os.Stderr, "Error: owner value required")
 					os.Exit(1)
 				}
-				err = mgr.SetConfigOwner(args[1])
+				result, err = mgr.SetConfigOwner(args[1])
 			case "group":
 				if len(args) < 2 {
 					fmt.Fprintln(os.Stderr, "Error: group value required")
 					os.Exit(1)
 				}
-				err = mgr.SetConfigGroup(args[1])
+				result, err = mgr.SetConfigGroup(args[1])
 			default:
 				// Bulk update: args are positional (mode [owner] [group])
 				modeStr := args[0]
@@ -122,7 +131,7 @@ Bulk update (positional):
 					group = &args[2]
 				}
 
-				err = mgr.SetConfig(&modeStr, owner, group)
+				result, err = mgr.SetConfig(&modeStr, owner, group)
 			}
 
 			if err != nil {
@@ -130,11 +139,13 @@ Bulk update (positional):
 				os.Exit(1)
 			}
 
+			printConfigUpdates(result)
+
 			// Print warnings
-			manager.PrintWarnings(mgr.GetWarnings())
+			printWarnings(mgr.GetWarnings())
 
 			// Print errors
-			manager.PrintErrors(mgr.GetErrors())
+			printErrors(mgr.GetErrors())
 
 			// Exit with error code if there were errors
 			if mgr.HasErrors() {
@@ -144,4 +155,36 @@ Bulk update (positional):
 	}
 
 	return setCmd
+}
+
+func printConfigUpdates(result *manager.ConfigUpdateResult) {
+	if result == nil {
+		return
+	}
+
+	fmt.Println("Config updated:")
+	if result.ModeUpdated {
+		fmt.Printf("  Mode: %04o\n", result.Mode.Perm())
+	}
+	if result.OwnerUpdated {
+		if result.Owner == "" {
+			fmt.Println("  Owner: (cleared)")
+		} else {
+			fmt.Printf("  Owner: %s\n", result.Owner)
+		}
+	}
+	if result.GroupUpdated {
+		if result.Group == "" {
+			fmt.Println("  Group: (cleared)")
+		} else {
+			fmt.Printf("  Group: %s\n", result.Group)
+		}
+	}
+}
+
+func formatConfigValue(value string) string {
+	if value == "" {
+		return "(empty)"
+	}
+	return value
 }

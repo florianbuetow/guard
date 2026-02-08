@@ -6,7 +6,6 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 
-	"github.com/florianbuetow/guard/internal/filesystem"
 	"github.com/florianbuetow/guard/internal/manager"
 )
 
@@ -21,9 +20,9 @@ type FilesPanel struct {
 }
 
 // NewFilesPanel creates a new FilesPanel
-func NewFilesPanel(root *FileNode, fs *filesystem.FileSystem, mgr *manager.Manager, styles *Styles, keys KeyMap) FilesPanel {
+func NewFilesPanel(root *FileNode, mgr *manager.Manager, styles *Styles, keys KeyMap) FilesPanel {
 	return FilesPanel{
-		tree:   NewFileTree(root, fs, mgr, styles, keys),
+		tree:   NewFileTree(root, mgr, styles, keys),
 		styles: styles,
 		title:  "Files",
 	}

@@ -1,28 +1,19 @@
 package filesystem
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"os/user"
 	"path/filepath"
-	"runtime"
 	"slices"
 	"strconv"
+	"strings"
 	"syscall"
-
-	"golang.org/x/sys/unix"
 )
 
-// Linux filesystem ioctl constants
-// These are part of the stable Linux kernel ABI and are defined in linux/fs.h
-const (
-	// FS_IOC_GETFLAGS - Get file flags
-	fsIocGetFlags = 0x80086601
-	// FS_IOC_SETFLAGS - Set file flags
-	fsIocSetFlags = 0x40086602
-	// FS_IMMUTABLE_FL - Immutable file flag
-	fsImmutableFlag = 0x00000010
-)
+// ErrRootRequired indicates an operation needs root privileges.
+var ErrRootRequired = errors.New("root required")
 
 // FileSystem provides file system operations for the guard tool.
 // It handles file existence checks, permission changes, and owner/group management.
@@ -42,9 +33,19 @@ func (fs *FileSystem) HasRootPrivileges() bool {
 }
 
 // FileExists checks if a file exists at the given path.
+// Returns false on permission errors to avoid implying the file is accessible.
 func (fs *FileSystem) FileExists(path string) bool {
 	_, err := os.Stat(path)
-	return err == nil
+	if err == nil {
+		return true
+	}
+	if os.IsNotExist(err) {
+		return false
+	}
+	if os.IsPermission(err) {
+		return false
+	}
+	return false
 }
 
 // GetFileInfo retrieves the current file mode, owner, and group for a file.
@@ -134,16 +135,26 @@ func (fs *FileSystem) Chmod(path string, mode os.FileMode) error {
 // Chown changes the owner of the specified file.
 // The owner parameter should be a username. It will be converted to UID.
 func (fs *FileSystem) Chown(path string, owner string) error {
-	// Look up the user to get UID
-	ownerUser, err := user.Lookup(owner)
-	if err != nil {
-		return fmt.Errorf("failed to lookup user %s for file %s: %w", owner, path, err)
-	}
+	var uid int
+	if isNumeric(owner) {
+		parsed, err := strconv.Atoi(owner)
+		if err != nil {
+			return fmt.Errorf("failed to parse UID %s for file %s: %w", owner, path, err)
+		}
+		uid = parsed
+	} else {
+		// Look up the user to get UID
+		ownerUser, err := user.Lookup(owner)
+		if err != nil {
+			return fmt.Errorf("failed to lookup user %s for file %s: %w", owner, path, err)
+		}
 
-	// Convert username to UID
-	uid, err := strconv.Atoi(ownerUser.Uid)
-	if err != nil {
-		return fmt.Errorf("failed to convert UID for user %s: %w", owner, err)
+		// Convert username to UID
+		parsed, err := strconv.Atoi(ownerUser.Uid)
+		if err != nil {
+			return fmt.Errorf("failed to convert UID for user %s: %w", owner, err)
+		}
+		uid = parsed
 	}
 
 	// Change owner (-1 for gid means don't change group)
@@ -157,16 +168,26 @@ func (fs *FileSystem) Chown(path string, owner string) error {
 // Chgrp changes the group of the specified file.
 // The group parameter should be a group name. It will be converted to GID.
 func (fs *FileSystem) Chgrp(path string, group string) error {
-	// Look up the group to get GID
-	groupInfo, err := user.LookupGroup(group)
-	if err != nil {
-		return fmt.Errorf("failed to lookup group %s for file %s: %w", group, path, err)
-	}
+	var gid int
+	if isNumeric(group) {
+		parsed, err := strconv.Atoi(group)
+		if err != nil {
+			return fmt.Errorf("failed to parse GID %s for file %s: %w", group, path, err)
+		}
+		gid = parsed
+	} else {
+		// Look up the group to get GID
+		groupInfo, err := user.LookupGroup(group)
+		if err != nil {
+			return fmt.Errorf("failed to lookup group %s for file %s: %w", group, path, err)
+		}
 
-	// Convert group name to GID
-	gid, err := strconv.Atoi(groupInfo.Gid)
-	if err != nil {
-		return fmt.Errorf("failed to convert GID for group %s: %w", group, err)
+		// Convert group name to GID
+		parsed, err := strconv.Atoi(groupInfo.Gid)
+		if err != nil {
+			return fmt.Errorf("failed to convert GID for group %s: %w", group, err)
+		}
+		gid = parsed
 	}
 
 	// Change group (-1 for uid means don't change owner)
@@ -190,6 +211,18 @@ func (fs *FileSystem) CheckFilesExist(paths []string) (existing, missing []strin
 	return existing, missing
 }
 
+func isNumeric(value string) bool {
+	if value == "" {
+		return false
+	}
+	for _, r := range value {
+		if r < '0' || r > '9' {
+			return false
+		}
+	}
+	return true
+}
+
 // DirEntry represents a directory entry with metadata for sorting
 type DirEntry struct {
 	Name     string
@@ -200,7 +233,7 @@ type DirEntry struct {
 }
 
 // ReadDir reads a directory and returns entries sorted with folders first, then alphabetically.
-// Dotfiles (hidden files starting with .) are included as per TUI spec line 193.
+// Dotfiles (hidden files starting with .) are included in directory listings.
 func (fs *FileSystem) ReadDir(path string) ([]DirEntry, error) {
 	entries, err := os.ReadDir(path)
 	if err != nil {
@@ -248,8 +281,8 @@ func (fs *FileSystem) ReadDir(path string) ([]DirEntry, error) {
 			return 1
 		}
 		// Then sort alphabetically (case-insensitive)
-		aLower := a.Name
-		bLower := b.Name
+		aLower := strings.ToLower(a.Name)
+		bLower := strings.ToLower(b.Name)
 		if aLower < bLower {
 			return -1
 		}
@@ -307,7 +340,7 @@ func (fs *FileSystem) CollectImmediateFiles(folder string) ([]string, error) {
 }
 
 // CollectFilesRecursive returns a list of all regular files in the folder and its subdirectories.
-// Excludes symlinks. Dotfiles (hidden files) are included as per TUI spec line 193.
+// Excludes symlinks. Dotfiles (hidden files) are included in directory listings.
 func (fs *FileSystem) CollectFilesRecursive(folder string) ([]string, error) {
 	var files []string
 
@@ -347,158 +380,30 @@ func (fs *FileSystem) CollectFilesRecursive(folder string) ([]string, error) {
 // SetImmutable sets the system-level immutable flag on a file.
 // macOS: Sets SF_IMMUTABLE (schg) - requires sudo to unset
 // Linux: Sets FS_IMMUTABLE_FL (+i) - requires sudo to unset
-// Prints a warning and returns nil if not running with root privileges.
+// Returns ErrRootRequired if not running with root privileges.
 func (fs *FileSystem) SetImmutable(path string) error {
 	if !fs.HasRootPrivileges() {
-		fmt.Printf("Warning: Setting immutable flag requires root privileges (sudo) for file %s - skipping\n", path)
-		return nil
+		return fmt.Errorf("%w: setting immutable flag requires root privileges for file %s", ErrRootRequired, path)
 	}
 
-	switch runtime.GOOS {
-	case "darwin":
-		return fs.setSystemImmutableMacOS(path)
-	case "linux":
-		return fs.setImmutableLinux(path)
-	default:
-		return fmt.Errorf("immutable flags not supported on %s", runtime.GOOS)
-	}
+	return fs.setImmutable(path)
 }
 
 // ClearImmutable removes the system-level immutable flag from a file.
 // macOS: Clears SF_IMMUTABLE (chflags noschg) - requires sudo
 // Linux: Clears FS_IMMUTABLE_FL (chattr -i) - requires sudo
-// Prints a warning and returns nil if not running with root privileges.
+// Returns ErrRootRequired if not running with root privileges.
 func (fs *FileSystem) ClearImmutable(path string) error {
 	if !fs.HasRootPrivileges() {
-		fmt.Printf("Warning: Clearing immutable flag requires root privileges (sudo) for file %s - skipping\n", path)
-		return nil
+		return fmt.Errorf("%w: clearing immutable flag requires root privileges for file %s", ErrRootRequired, path)
 	}
 
-	switch runtime.GOOS {
-	case "darwin":
-		return fs.clearSystemImmutableMacOS(path)
-	case "linux":
-		return fs.clearImmutableLinux(path)
-	default:
-		return fmt.Errorf("immutable flags not supported on %s", runtime.GOOS)
-	}
+	return fs.clearImmutable(path)
 }
 
 // IsImmutable checks if a file has the system-level immutable flag set.
 // macOS: Checks for SF_IMMUTABLE (schg)
 // Linux: Checks for FS_IMMUTABLE_FL (+i)
 func (fs *FileSystem) IsImmutable(path string) (bool, error) {
-	switch runtime.GOOS {
-	case "darwin":
-		return fs.isSystemImmutableMacOS(path)
-	case "linux":
-		return fs.isImmutableLinux(path)
-	default:
-		return false, fmt.Errorf("immutable flags not supported on %s", runtime.GOOS)
-	}
-}
-
-// setSystemImmutableMacOS sets SF_IMMUTABLE flag on macOS (schg)
-func (fs *FileSystem) setSystemImmutableMacOS(path string) error {
-	// Get current flags to preserve them
-	var stat unix.Stat_t
-	if err := unix.Stat(path, &stat); err != nil {
-		return fmt.Errorf("failed to get file flags for %s: %w", path, err)
-	}
-
-	// Set SF_IMMUTABLE flag while preserving existing flags
-	newFlags := stat.Flags | unix.SF_IMMUTABLE
-	if err := unix.Chflags(path, int(newFlags)); err != nil {
-		return fmt.Errorf("failed to set system immutable flag for file %s: %w", path, err)
-	}
-	return nil
-}
-
-// clearSystemImmutableMacOS clears SF_IMMUTABLE flag on macOS (chflags noschg)
-func (fs *FileSystem) clearSystemImmutableMacOS(path string) error {
-	// Get current flags
-	var stat unix.Stat_t
-	if err := unix.Stat(path, &stat); err != nil {
-		return fmt.Errorf("failed to get file flags for %s: %w", path, err)
-	}
-
-	// Clear SF_IMMUTABLE flag
-	newFlags := stat.Flags &^ unix.SF_IMMUTABLE
-	if err := unix.Chflags(path, int(newFlags)); err != nil {
-		return fmt.Errorf("failed to clear system immutable flag for file %s: %w", path, err)
-	}
-	return nil
-}
-
-// isSystemImmutableMacOS checks if SF_IMMUTABLE flag is set on macOS
-func (fs *FileSystem) isSystemImmutableMacOS(path string) (bool, error) {
-	var stat unix.Stat_t
-	if err := unix.Stat(path, &stat); err != nil {
-		return false, fmt.Errorf("failed to get file flags for %s: %w", path, err)
-	}
-
-	return (stat.Flags & unix.SF_IMMUTABLE) != 0, nil
-}
-
-// setImmutableLinux sets FS_IMMUTABLE_FL flag on Linux (+i)
-func (fs *FileSystem) setImmutableLinux(path string) error {
-	f, err := os.OpenFile(path, os.O_RDONLY, 0)
-	if err != nil {
-		return fmt.Errorf("failed to open file %s for immutable flag: %w", path, err)
-	}
-	defer f.Close()
-
-	// Get current flags
-	flags, err := unix.IoctlGetInt(int(f.Fd()), fsIocGetFlags)
-	if err != nil {
-		return fmt.Errorf("failed to get file flags for %s: %w", path, err)
-	}
-
-	// Set FS_IMMUTABLE_FL flag
-	flags |= fsImmutableFlag
-	if err := unix.IoctlSetInt(int(f.Fd()), fsIocSetFlags, flags); err != nil {
-		return fmt.Errorf("failed to set immutable flag for file %s: %w", path, err)
-	}
-
-	return nil
-}
-
-// clearImmutableLinux clears FS_IMMUTABLE_FL flag on Linux (chattr -i)
-func (fs *FileSystem) clearImmutableLinux(path string) error {
-	f, err := os.OpenFile(path, os.O_RDONLY, 0)
-	if err != nil {
-		return fmt.Errorf("failed to open file %s for immutable flag: %w", path, err)
-	}
-	defer f.Close()
-
-	// Get current flags
-	flags, err := unix.IoctlGetInt(int(f.Fd()), fsIocGetFlags)
-	if err != nil {
-		return fmt.Errorf("failed to get file flags for %s: %w", path, err)
-	}
-
-	// Clear FS_IMMUTABLE_FL flag
-	flags &^= fsImmutableFlag
-	if err := unix.IoctlSetInt(int(f.Fd()), fsIocSetFlags, flags); err != nil {
-		return fmt.Errorf("failed to clear immutable flag for file %s: %w", path, err)
-	}
-
-	return nil
-}
-
-// isImmutableLinux checks if FS_IMMUTABLE_FL flag is set on Linux
-func (fs *FileSystem) isImmutableLinux(path string) (bool, error) {
-	f, err := os.OpenFile(path, os.O_RDONLY, 0)
-	if err != nil {
-		return false, fmt.Errorf("failed to open file %s for immutable flag check: %w", path, err)
-	}
-	defer f.Close()
-
-	// Get current flags
-	flags, err := unix.IoctlGetInt(int(f.Fd()), fsIocGetFlags)
-	if err != nil {
-		return false, fmt.Errorf("failed to get file flags for %s: %w", path, err)
-	}
-
-	return (flags & fsImmutableFlag) != 0, nil
+	return fs.isImmutable(path)
 }

@@ -16,17 +16,15 @@ func toggleFilesWithOutput(mgr *manager.Manager, files []string) bool {
 	guardBefore := make(map[string]bool)
 	wasRegistered := make(map[string]bool)
 	for _, path := range files {
-		if mgr.IsRegisteredFile(path) {
-			wasRegistered[path] = true
-			guard, err := mgr.GetRegistry().GetRegisteredFileGuard(path)
-			if err == nil {
-				guardBefore[path] = guard
-			}
-		} else {
+		status, err := mgr.GetFileStatus(path)
+		if err != nil || !status.Registered {
 			// File not registered yet - will be added with guard=false, then toggled to true
 			wasRegistered[path] = false
 			guardBefore[path] = false
+			continue
 		}
+		wasRegistered[path] = true
+		guardBefore[path] = status.Guard
 	}
 
 	// Toggle files
@@ -38,7 +36,8 @@ func toggleFilesWithOutput(mgr *manager.Manager, files []string) bool {
 	// Count newly registered files
 	newlyRegistered := 0
 	for _, path := range files {
-		if !wasRegistered[path] && mgr.IsRegisteredFile(path) {
+		status, err := mgr.GetFileStatus(path)
+		if err == nil && status.Registered && !wasRegistered[path] {
 			newlyRegistered++
 		}
 	}
@@ -50,17 +49,16 @@ func toggleFilesWithOutput(mgr *manager.Manager, files []string) bool {
 
 	// Print status messages for each file
 	for _, path := range files {
-		if mgr.IsRegisteredFile(path) {
-			guard, err := mgr.GetRegistry().GetRegisteredFileGuard(path)
-			if err == nil {
-				// Only print if state changed
-				if before, ok := guardBefore[path]; ok && before != guard {
-					if guard {
-						fmt.Printf("Guard enabled for %s\n", path)
-					} else {
-						fmt.Printf("Guard disabled for %s\n", path)
-					}
-				}
+		status, err := mgr.GetFileStatus(path)
+		if err != nil || !status.Registered {
+			continue
+		}
+		// Only print if state changed
+		if before, ok := guardBefore[path]; ok && before != status.Guard {
+			if status.Guard {
+				fmt.Printf("Guard enabled for %s\n", path)
+			} else {
+				fmt.Printf("Guard disabled for %s\n", path)
 			}
 		}
 	}
@@ -133,17 +131,11 @@ Examples:
 				}
 			}
 
-			// Save registry
-			if err := mgr.SaveRegistry(); err != nil {
-				fmt.Fprintf(os.Stderr, "Error: Failed to save registry: %v\n", err)
-				os.Exit(1)
-			}
-
 			// Print warnings
-			manager.PrintWarnings(mgr.GetWarnings())
+			printWarnings(mgr.GetWarnings())
 
 			// Print errors
-			manager.PrintErrors(mgr.GetErrors())
+			printErrors(mgr.GetErrors())
 
 			// Exit with error code if there were errors
 			if mgr.HasErrors() {
@@ -195,17 +187,11 @@ generate warnings.`,
 				os.Exit(1)
 			}
 
-			// Save registry
-			if err := mgr.SaveRegistry(); err != nil {
-				fmt.Fprintf(os.Stderr, "Error: Failed to save registry: %v\n", err)
-				os.Exit(1)
-			}
-
 			// Print warnings
-			manager.PrintWarnings(mgr.GetWarnings())
+			printWarnings(mgr.GetWarnings())
 
 			// Print errors
-			manager.PrintErrors(mgr.GetErrors())
+			printErrors(mgr.GetErrors())
 
 			// Exit with error code if there were errors
 			if mgr.HasErrors() {
@@ -250,17 +236,11 @@ Folders are dynamic collections that scan files from disk. On toggle:
 				os.Exit(1)
 			}
 
-			// Save registry
-			if err := mgr.SaveRegistry(); err != nil {
-				fmt.Fprintf(os.Stderr, "Error: Failed to save registry: %v\n", err)
-				os.Exit(1)
-			}
-
 			// Print warnings
-			manager.PrintWarnings(mgr.GetWarnings())
+			printWarnings(mgr.GetWarnings())
 
 			// Print errors
-			manager.PrintErrors(mgr.GetErrors())
+			printErrors(mgr.GetErrors())
 
 			// Exit with error code if there were errors
 			if mgr.HasErrors() {
@@ -300,7 +280,12 @@ states, an error will be returned and no changes will be made (conflict detectio
 			// Check if any collections exist
 			validCollections := 0
 			for _, name := range args {
-				if mgr.GetRegistry().IsRegisteredCollection(name) {
+				status, err := mgr.GetCollectionStatus(name, false)
+				if err != nil {
+					fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+					os.Exit(1)
+				}
+				if status.Exists {
 					validCollections++
 				}
 			}
@@ -309,7 +294,7 @@ states, an error will be returned and no changes will be made (conflict detectio
 				for _, name := range args {
 					mgr.AddWarning(manager.NewWarning(manager.WarningCollectionNotFound, "", name))
 				}
-				manager.PrintWarnings(mgr.GetWarnings())
+				printWarnings(mgr.GetWarnings())
 				os.Exit(1)
 			}
 
@@ -319,19 +304,19 @@ states, an error will be returned and no changes will be made (conflict detectio
 				os.Exit(1)
 			}
 
-			// Save registry
-			if err := mgr.SaveRegistry(); err != nil {
-				fmt.Fprintf(os.Stderr, "Error: Failed to save registry: %v\n", err)
-				os.Exit(1)
-			}
-
 			// Print success messages - files first (sorted), then collection summary
+			statusByName := make(map[string]manager.CollectionStatus, len(args))
 			for _, collectionName := range args {
-				if !mgr.GetRegistry().IsRegisteredCollection(collectionName) {
+				status, err := mgr.GetCollectionStatus(collectionName, true)
+				if err != nil {
+					fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+					os.Exit(1)
+				}
+				if !status.Exists {
 					continue
 				}
-				files, err := mgr.GetRegistry().GetRegisteredCollectionFiles(collectionName)
-				if err != nil || len(files) == 0 {
+				statusByName[collectionName] = status
+				if len(status.Files) == 0 {
 					continue
 				}
 
@@ -339,25 +324,25 @@ states, an error will be returned and no changes will be made (conflict detectio
 				fmt.Printf("toggling guarded state for files in collection: %s\n", collectionName)
 
 				// Get collection's current guard state to determine message
-				guardState, _ := mgr.GetRegistry().GetRegisteredCollectionGuard(collectionName)
+				guardState := status.Guard
 
-				existing, _ := mgr.GetFileSystem().CheckFilesExist(files)
+				existing, _ := mgr.GetFileSystem().CheckFilesExist(status.Files)
 				sort.Strings(existing)
 				for _, file := range existing {
 					if guardState {
-						fmt.Printf("Guard enabled for %s\n", file)
+						fmt.Printf("Guard enabled for %s\n", displayPath(mgr, file))
 					} else {
-						fmt.Printf("Guard disabled for %s\n", file)
+						fmt.Printf("Guard disabled for %s\n", displayPath(mgr, file))
 					}
 				}
 			}
 			fmt.Println()
 			for _, collectionName := range args {
-				if !mgr.GetRegistry().IsRegisteredCollection(collectionName) {
+				status, ok := statusByName[collectionName]
+				if !ok || !status.Exists {
 					continue
 				}
-				guardState, _ := mgr.GetRegistry().GetRegisteredCollectionGuard(collectionName)
-				if guardState {
+				if status.Guard {
 					fmt.Printf("Guard enabled for collection %s\n", collectionName)
 				} else {
 					fmt.Printf("Guard disabled for collection %s\n", collectionName)
@@ -365,10 +350,10 @@ states, an error will be returned and no changes will be made (conflict detectio
 			}
 
 			// Print warnings
-			manager.PrintWarnings(mgr.GetWarnings())
+			printWarnings(mgr.GetWarnings())
 
 			// Print errors
-			manager.PrintErrors(mgr.GetErrors())
+			printErrors(mgr.GetErrors())
 
 			// Exit with error code if there were errors
 			if mgr.HasErrors() {
