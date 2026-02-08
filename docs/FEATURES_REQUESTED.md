@@ -369,6 +369,167 @@ Scroll position should also be preserved (or adjusted minimally) so the viewport
 
 ---
 
+### Auto-Refresh in Interactive Mode
+
+**Status:** Proposed
+**Priority:** Medium
+**Requested By:** Flo
+**Date:** 2026-02-07
+
+**Description:**
+GuardTUI should automatically refresh the file tree every 60 seconds so that changes to files on disk (e.g., new files, deleted files, permission changes) are reflected without requiring a manual `R` keypress.
+
+**Use Case:**
+When an AI agent or other external process is modifying files while the TUI is open, the displayed state can become stale. Auto-refresh keeps the view up to date without user intervention, which is especially useful during long editing sessions or when monitoring files that are being actively changed.
+
+**Proposed Implementation:**
+- A background timer triggers a refresh every 60 seconds.
+- **Optimization:** Only refresh folders that are currently expanded in the view. Collapsed folders can be skipped entirely since their contents are not visible, significantly reducing the number of filesystem calls in large projects.
+- The refresh interval could be configurable in the future (e.g., via a flag or session setting).
+- Auto-refresh should respect the same state preservation rules as manual refresh (see "Preserve Selection and Folder State on Refresh" feature): selection, scroll position, and folder expansion state must be maintained.
+- The refresh timer resets after a manual `R` refresh to avoid redundant back-to-back refreshes.
+
+**Acceptance Criteria:**
+- [ ] File tree auto-refreshes every 60 seconds
+- [ ] Only expanded/visible folders are refreshed (optimization)
+- [ ] Selection, scroll position, and folder expansion state are preserved across auto-refreshes
+- [ ] Manual `R` refresh resets the auto-refresh timer
+- [ ] No visible flicker or UI disruption during auto-refresh
+- [ ] Auto-refresh does not block user input
+
+**Notes:**
+The expanded-folders-only optimization is important for large projects where a full tree refresh could be expensive. This pairs well with the "Preserve Selection and Folder State on Refresh" feature — both share the requirement that refreshes should be seamless.
+
+---
+
+### Configurable Auto-Refresh Interval
+
+**Status:** Proposed
+**Priority:** Medium
+**Requested By:** Flo
+**Date:** 2026-02-07
+
+**Description:**
+Store the auto-refresh interval (in seconds) in the `.guardsession` file and allow the user to change it from within the TUI via a keyboard shortcut.
+
+**Use Case:**
+Different projects and workflows need different refresh rates. A small project might want fast refreshes (e.g., 10s) while a large monorepo might prefer slower intervals (e.g., 120s) to reduce filesystem overhead. Persisting the interval in the session file means the user sets it once and it sticks.
+
+**Proposed Implementation:**
+- **Storage:** Add a `refresh_interval_seconds` field to `.guardsession` (see IDEA-004). Default: `60`.
+- **Keyboard shortcut:** `Ctrl+R` opens a small input prompt (or cycles through preset values) to set the refresh interval in seconds.
+  - **Why `Ctrl+R`:** Bubble Tea supports `ctrl+r` reliably. `Shift+R` is not distinguishable from `R` in terminals (both produce the same character, already bound to manual refresh). `Alt+R` is unreliable on macOS (Option key produces `®`).
+  - **Option A — Input prompt:** A small overlay or inline input field where the user types a number (e.g., `30`) and confirms with Enter. Escape cancels.
+  - **Option B — Cycle presets:** `Ctrl+R` cycles through preset values: `off → 10s → 30s → 60s → 120s → 300s → off`. The current value is briefly shown in the status bar.
+- The new interval takes effect immediately (resets the auto-refresh timer).
+- A value of `0` or `off` disables auto-refresh entirely.
+- The value is persisted to `.guardsession` on change and on TUI exit.
+
+**Acceptance Criteria:**
+- [ ] Auto-refresh interval is stored in `.guardsession` in seconds
+- [ ] Default interval is 60 seconds when no session file exists
+- [ ] `Ctrl+R` allows changing the refresh interval from the TUI
+- [ ] New interval takes effect immediately
+- [ ] Setting interval to 0 disables auto-refresh
+- [ ] Interval persists across TUI sessions
+- [ ] Current interval is visible to the user (e.g., in status bar feedback)
+
+**Notes:**
+Depends on the "Auto-Refresh in Interactive Mode" feature. Also depends on IDEA-004 (`.guardsession` file) for persistence. If `.guardsession` is not yet implemented, the interval can default to 60s with no persistence until session support is added.
+
+---
+
+### Warn About Missing .gitignore Entries on Init
+
+**Status:** Proposed
+**Priority:** High
+**Requested By:** Flo
+**Date:** 2026-02-07
+
+**Description:**
+When Guard initializes (via `guard init` or first launch of interactive mode), check whether a `.gitignore` file exists in the current directory. If it does, warn the user if `.guardfile` and/or `.guardsession` are not listed in it.
+
+**Use Case:**
+Guard's `.guardfile` and `.guardsession` contain machine-specific state (file permissions, UI layout preferences) that should not be committed to version control. Users who forget to add these to `.gitignore` risk committing them accidentally, which can cause merge conflicts or expose local configuration to collaborators. A one-time warning at initialization catches this early.
+
+**Trigger Conditions:**
+- **When:** Only during initialization — `guard init` (CLI) or first launch of `guard -i` (interactive mode). Not on every startup or refresh.
+- **Prerequisite:** A `.gitignore` file exists in the current working directory. If no `.gitignore` exists, skip the check entirely (the project may not be using Git, or the user manages ignores at a different level).
+
+**Proposed Implementation:**
+1. On `guard init` or interactive mode startup, check if `.gitignore` exists in the current directory.
+2. If it exists, read its contents and check whether `.guardfile` is listed.
+3. Also check whether `.guardsession` is listed (even if the session file doesn't exist yet — it will be created later).
+4. For each missing entry, print a warning:
+   ```
+   Warning: .guardfile is not listed in .gitignore
+   Warning: .guardsession is not listed in .gitignore
+   ```
+5. The warning is informational only — Guard proceeds normally regardless.
+6. Do **not** automatically modify `.gitignore` (the user may have a reason for not ignoring these files, or may manage ignores at the repository root in a subfolder setup).
+
+**Acceptance Criteria:**
+- [ ] Warning is printed when `.guardfile` is missing from `.gitignore` during init
+- [ ] Warning is printed when `.guardsession` is missing from `.gitignore` during init
+- [ ] No warning if `.gitignore` does not exist
+- [ ] No warning if entries are already present in `.gitignore`
+- [ ] Check only runs during initialization, not on every startup
+- [ ] Guard proceeds normally regardless of warning outcome
+- [ ] `.gitignore` is never modified automatically
+
+**Notes:**
+The `.gitignore` check should be a simple substring/line match (accounting for leading `/` or trailing comments). Glob patterns in `.gitignore` (e.g., `.guard*`) should also satisfy the check. This feature is independent of IDEA-004 (`.guardsession` file) — the warning for `.guardsession` can be added proactively even before session support is implemented.
+
+---
+
+### Natural Alphabetical File Sorting
+
+**Status:** Proposed
+**Priority:** Medium
+**Requested By:** Flo
+**Date:** 2026-02-07
+
+**Description:**
+Files within a folder should be sorted using natural alphabetical order so that a base filename always appears before longer names that extend it with a separator. For example, `specification.md` should appear before `specification-data-flow.md`.
+
+**Use Case:**
+The current sort uses raw string comparison, where `-` (ASCII 45) sorts before `.` (ASCII 46). This causes `specification-data-flow.md` to appear before `specification.md`, which feels wrong — users expect the shorter, "base" name to come first, matching the behavior of most file managers and IDEs.
+
+**Current Behavior:**
+```
+specification-data-flow.md    ← sorts first because '-' (45) < '.' (46)
+specification.md
+```
+
+**Expected Behavior:**
+```
+specification.md              ← base name first
+specification-data-flow.md
+```
+
+**Proposed Implementation:**
+The sort comparator in `internal/filesystem/filesystem.go` (line ~274, `ReadDir` function) should be updated. The existing sort already handles directories-first and case-insensitive ordering. The alphabetical comparison step needs to be replaced with a natural sort that treats `.` (extension separator) as having higher priority than `-`, `_`, and other common separators.
+
+Approach options:
+- **Option A — Dot-aware sort:** Split filenames into stem and extension. Compare stems first; if one stem is a prefix of the other, the shorter one sorts first. Then compare extensions.
+- **Option B — Locale-aware collation:** Use Unicode collation (e.g., Go's `golang.org/x/text/collate`) which typically ignores punctuation for primary sorting, naturally producing the expected order.
+- **Option C — Custom weight map:** Assign `.` a lower sort weight than `-` and `_` so that `specification.md` (where the next char is `.`) beats `specification-data-flow.md` (where the next char is `-`).
+
+Option A is the simplest and most predictable.
+
+**Acceptance Criteria:**
+- [ ] `specification.md` sorts before `specification-data-flow.md`
+- [ ] General rule: if filename A is a prefix of filename B (up to the extension), A sorts first
+- [ ] Directories-first ordering is preserved
+- [ ] Case-insensitive sorting is preserved
+- [ ] Sort is stable and consistent across refreshes
+- [ ] Existing tests updated to reflect new sort order
+
+**Notes:**
+The fix is localized to the `slices.SortFunc` comparator in `internal/filesystem/filesystem.go:ReadDir`. No changes needed outside the filesystem layer.
+
+---
+
 ### Recently Modified Files View
 
 **Status:** Proposed
