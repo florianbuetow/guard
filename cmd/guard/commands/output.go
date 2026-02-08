@@ -2,6 +2,7 @@ package commands
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/florianbuetow/guard/internal/manager"
 )
@@ -21,7 +22,7 @@ func printWarnings(warnings []manager.Warning) {
 func printErrors(errors []string) {
 	for _, msg := range errors {
 		if msg != "" {
-			fmt.Println(msg)
+			fmt.Fprintln(os.Stderr, msg)
 		}
 	}
 }

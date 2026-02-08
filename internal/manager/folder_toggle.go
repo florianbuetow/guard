@@ -16,7 +16,7 @@ type ToggleFolderResult struct {
 
 // ToggleFilesInFolder toggles guard state for all files in a folder.
 // If recursive is true, includes files in subdirectories.
-// The new guard state is determined by majority of current guard states.
+// Guard is enabled when half or fewer files are currently guarded, disabled otherwise.
 func (m *Manager) ToggleFilesInFolder(path string, recursive bool) (*ToggleFolderResult, error) {
 	if m.security == nil {
 		return nil, fmt.Errorf("registry not loaded")
@@ -46,6 +46,7 @@ func (m *Manager) ToggleFilesInFolder(path string, recursive bool) (*ToggleFolde
 
 	newGuard := guardedCount <= len(files)/2
 	affected := 0
+	var rollbacks []fileRollback
 
 	for _, filePath := range files {
 		if !m.security.IsRegisteredFile(filePath) {
@@ -59,6 +60,12 @@ func (m *Manager) ToggleFilesInFolder(path string, recursive bool) (*ToggleFolde
 				m.AddError(fmt.Sprintf("Error: Failed to register %s: %v", filePath, err))
 				continue
 			}
+		}
+
+		rollbackInfo, err := m.captureFileRollback(filePath)
+		if err != nil {
+			m.AddError(fmt.Sprintf("Error: Failed to capture rollback info for %s: %v", filePath, err))
+			continue
 		}
 
 		if newGuard {
@@ -106,10 +113,12 @@ func (m *Manager) ToggleFilesInFolder(path string, recursive bool) (*ToggleFolde
 			continue
 		}
 
+		rollbacks = append(rollbacks, *rollbackInfo)
 		affected++
 	}
 
 	if err := m.SaveRegistry(); err != nil {
+		m.rollbackFileChanges(rollbacks)
 		return nil, fmt.Errorf("failed to save registry: %w", err)
 	}
 

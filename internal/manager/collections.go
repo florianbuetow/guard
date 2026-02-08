@@ -339,6 +339,7 @@ func (m *Manager) mapFilesToCollections(names []string) map[string][]string {
 		}
 		files, err := m.security.GetRegisteredCollectionFiles(name)
 		if err != nil {
+			m.AddError(fmt.Sprintf("Error: Failed to get files from collection %s: %v", name, err))
 			continue
 		}
 		for _, file := range files {
@@ -449,6 +450,7 @@ func (m *Manager) nextCollectionGuardState(names []string) (bool, bool) {
 		}
 		currentGuard, err := m.security.GetRegisteredCollectionGuard(name)
 		if err != nil {
+			m.AddError(fmt.Sprintf("Error: Failed to get guard state for collection %s: %v", name, err))
 			continue
 		}
 		return !currentGuard, true

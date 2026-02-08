@@ -4,9 +4,7 @@ Date: 2026-02-05
 
 This document is the **reference architecture** for Guard. It describes the target layered design, the responsibilities of each layer, and the rules that keep the codebase debuggable and extensible over time.
 
-If you are trying to understand what’s *currently* in the codebase versus what’s *intended*, read:
-- `docs/done/LAYERING_VIOLATIONS.md` (where the current code violates these rules)
-- `docs/done/REFACTORING_PLAN.md` (how to get from current → target)
+The layering violations identified during initial development have been resolved through refactoring.
 
 ---
 
@@ -293,6 +291,4 @@ sequenceDiagram
 
 ## Current implementation note
 
-This file describes the **target** architecture. The repository may still contain violations while refactoring is in progress. Do not add new exceptions—use:
-- `docs/done/LAYERING_VIOLATIONS.md` to understand existing debt
-- `docs/done/REFACTORING_PLAN.md` to remove it incrementally
+This file describes the **target** architecture. Do not add new layering violations—if you need to deviate, document the reason and plan for resolution.

@@ -1,17 +1,17 @@
-//go:build linux || darwin
+//go:build linux
 
 package filesystem
 
 import (
 	"os"
+	"path/filepath"
 	"testing"
 
 	"golang.org/x/sys/unix"
 )
 
-// TestImmutableFlagsOnUnix tests the actual ioctl functionality for immutable flags on Unix systems.
-// This test only runs on Linux and macOS and requires root privileges on Linux.
-// It tests on a filesystem that supports inode flags.
+// TestImmutableFlagsOnUnix tests the actual ioctl functionality for immutable flags on Linux.
+// This test requires root privileges and a filesystem that supports inode flags.
 func TestImmutableFlagsOnUnix(t *testing.T) {
 	fs := NewFileSystem()
 
@@ -20,9 +20,13 @@ func TestImmutableFlagsOnUnix(t *testing.T) {
 		t.Skip("Test requires root privileges to set/clear immutable flags")
 	}
 
-	// Create test file on a filesystem that supports inode flags
-	// Try to use /home instead of /tmp since /tmp is often tmpfs
-	testFile := "/home/paul/test_guard_immutable_unit_test.txt"
+	// Create test file on a filesystem that supports inode flags.
+	// Use home directory instead of /tmp since /tmp is often tmpfs which doesn't support ioctl flags.
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		t.Skipf("Could not determine home directory: %v", err)
+	}
+	testFile := filepath.Join(homeDir, "test_guard_immutable_unit_test.txt")
 	// Clean up any existing file first
 	os.Remove(testFile)
 

@@ -895,7 +895,6 @@ func TestIsImmutableBehavior(t *testing.T) {
 	}
 }
 
-
 func TestImmutableFlagNonExistentFile(t *testing.T) {
 	fs := NewFileSystem()
 	tmpDir := t.TempDir()

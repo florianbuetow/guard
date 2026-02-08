@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"slices"
 	"strconv"
+	"strings"
 	"syscall"
 )
 
@@ -232,7 +233,7 @@ type DirEntry struct {
 }
 
 // ReadDir reads a directory and returns entries sorted with folders first, then alphabetically.
-// Dotfiles (hidden files starting with .) are included as per TUI spec line 193.
+// Dotfiles (hidden files starting with .) are included in directory listings.
 func (fs *FileSystem) ReadDir(path string) ([]DirEntry, error) {
 	entries, err := os.ReadDir(path)
 	if err != nil {
@@ -280,8 +281,8 @@ func (fs *FileSystem) ReadDir(path string) ([]DirEntry, error) {
 			return 1
 		}
 		// Then sort alphabetically (case-insensitive)
-		aLower := a.Name
-		bLower := b.Name
+		aLower := strings.ToLower(a.Name)
+		bLower := strings.ToLower(b.Name)
 		if aLower < bLower {
 			return -1
 		}
@@ -339,7 +340,7 @@ func (fs *FileSystem) CollectImmediateFiles(folder string) ([]string, error) {
 }
 
 // CollectFilesRecursive returns a list of all regular files in the folder and its subdirectories.
-// Excludes symlinks. Dotfiles (hidden files) are included as per TUI spec line 193.
+// Excludes symlinks. Dotfiles (hidden files) are included in directory listings.
 func (fs *FileSystem) CollectFilesRecursive(folder string) ([]string, error) {
 	var files []string
 

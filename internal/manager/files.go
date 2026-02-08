@@ -215,11 +215,19 @@ func (m *Manager) RemoveFiles(paths []string) error {
 				if errors.Is(err, filesystem.ErrRootRequired) {
 					m.AddWarning(NewWarning(WarningGeneric, fmt.Sprintf("Clearing immutable flag requires root privileges (sudo) for file %s - skipping", path)))
 					if len(collectionsContaining) > 0 {
-						_ = m.security.AddRegisteredFilesToRegisteredCollections(collectionsContaining, []string{path})
+						if addErr := m.security.AddRegisteredFilesToRegisteredCollections(collectionsContaining, []string{path}); addErr != nil {
+							m.AddError(fmt.Sprintf("Error: Failed to restore collection memberships for %s: %v", path, addErr))
+						}
 					}
 					continue
 				} else {
 					m.AddError(fmt.Sprintf("Error: Failed to clear immutable flag for %s: %v", path, err))
+					// Re-add to original collections since removal failed
+					if len(collectionsContaining) > 0 {
+						if addErr := m.security.AddRegisteredFilesToRegisteredCollections(collectionsContaining, []string{path}); addErr != nil {
+							m.AddError(fmt.Sprintf("Error: Failed to restore collection memberships for %s: %v", path, addErr))
+						}
+					}
 					// Attempt restore anyway to surface permission errors clearly
 					if err := m.fs.RestorePermissions(path, mode, owner, group); err != nil {
 						m.AddError(fmt.Sprintf("Error: Failed to restore permissions for %s: %v", path, err))
