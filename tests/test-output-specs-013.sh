@@ -35,9 +35,9 @@ test_version_output_format() {
     # Assert exit code
     assert_exit_code $exit_code 0 "Should succeed"
 
-    # Check for format: "guard version X.Y.Z" or "guard version vX.Y.Z..." (dev builds) or "guard version dev"
-    # Accepts: "guard version 1.2.3", "guard version v0.0.0-82-ga7cb90a-dirty", or "guard version dev"
-    if echo "$output" | grep -qE "^guard version (v?[0-9]+\.[0-9]+\.[0-9]+|dev)"; then
+    # Check for format: "guard version X.Y.Z" or "guard version vX.Y.Z..." (dev builds) or "guard version dev" or "guard version <git-hash>"
+    # Accepts: "guard version 1.2.3", "guard version v0.0.0-82-ga7cb90a-dirty", "guard version dev", or "guard version d14f6fd"
+    if echo "$output" | grep -qE "^guard version (v?[0-9]+\.[0-9]+\.[0-9]+|dev|[0-9a-f]{7,40}(-dirty)?)"; then
         echo -e "${GREEN}✓ PASS${NC}: Output matches 'guard version X.Y.Z' format"
         TESTS_PASSED=$((TESTS_PASSED + 1))
     else
