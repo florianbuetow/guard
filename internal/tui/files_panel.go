@@ -39,16 +39,7 @@ func (p FilesPanel) Update(msg tea.Msg) (FilesPanel, tea.Cmd) {
 	case WindowSizeMsg:
 		p.width = msg.Width
 		p.height = msg.Height
-		// Account for borders (2) and title (1)
-		innerWidth := msg.Width - 2
-		innerHeight := msg.Height - 3
-		if innerWidth < 1 {
-			innerWidth = 1
-		}
-		if innerHeight < 1 {
-			innerHeight = 1
-		}
-		p.tree.SetSize(innerWidth, innerHeight)
+		p.tree.SetSize(msg.Width, msg.Height)
 	}
 
 	var cmd tea.Cmd
@@ -138,15 +129,7 @@ func (p *FilesPanel) IsFocused() bool {
 func (p *FilesPanel) SetSize(width, height int) {
 	p.width = width
 	p.height = height
-	innerWidth := width - 2
-	innerHeight := height - 3
-	if innerWidth < 1 {
-		innerWidth = 1
-	}
-	if innerHeight < 1 {
-		innerHeight = 1
-	}
-	p.tree.SetSize(innerWidth, innerHeight)
+	p.tree.SetSize(width, height)
 }
 
 // Refresh refreshes the panel content

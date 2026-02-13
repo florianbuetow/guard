@@ -155,7 +155,7 @@ func (ft FileTree) renderNode(fn FlattenedNode, selected bool) string {
 		nameStyle = ft.styles.ItemFile
 	}
 
-	if selected {
+	if selected && ft.focused {
 		nameStyle = ft.styles.ItemSelected
 	}
 

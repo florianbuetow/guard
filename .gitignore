@@ -6,6 +6,7 @@
 
 # Release binaries
 bin/
+guard
 
 # Test binary, built with `go test -c`
 *.test
@@ -26,6 +27,9 @@ go.work.sum
 # env file
 .env
 
+# Claude Code
+.claude/
+
 # Editor/IDE
 # .idea/
 scratch
@@ -38,3 +42,4 @@ tmp/
 .DS_Store
 **/.DS_Store
 reports/
+docs/plans/
