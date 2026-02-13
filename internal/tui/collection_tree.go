@@ -140,7 +140,7 @@ func (ct CollectionTree) renderNode(node CollectionNode, selected bool) string {
 		nameStyle = ct.styles.ItemNormal
 	}
 
-	if selected {
+	if selected && ct.focused {
 		nameStyle = ct.styles.ItemSelected
 	}
 

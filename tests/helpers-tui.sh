@@ -577,6 +577,163 @@ tui_assert_row_not_contains() {
     fi
 }
 
+# Assert a specific row contains an ANSI escape code (for color testing)
+# Usage: tui_assert_row_has_ansi_code <row_num> <code> <message>
+# FAILS IMMEDIATELY on assertion failure (exits with code 1)
+tui_assert_row_has_ansi_code() {
+    local row_num="$1"
+    local code="$2"
+    local message="$3"
+    local screen=$(tui_capture_ansi)
+    local row=$(echo "$screen" | sed -n "${row_num}p")
+
+    if [[ "$row" == *"$code"* ]]; then
+        echo -e "${GREEN}✓ PASS${NC}: $message"
+        ((TESTS_PASSED++))
+        return 0
+    else
+        # Take failure screenshot and exit immediately
+        tui_screenshot "ASSERT_FAIL_row_has_ansi_code"
+        echo -e "${RED}✗ FAIL${NC}: $message"
+        echo -e "  Row $row_num does not contain ANSI code: '$code'"
+        echo -e "  Row content: '$row'"
+        echo -e "  Screenshot: $TUI_LAST_SCREENSHOT"
+        tui_finalize_screenshots "FAIL"
+        tui_cleanup
+        exit 1
+    fi
+}
+
+# Assert a specific row does NOT contain an ANSI escape code (for color testing)
+# Usage: tui_assert_row_no_ansi_code <row_num> <code> <message>
+# FAILS IMMEDIATELY on assertion failure (exits with code 1)
+tui_assert_row_no_ansi_code() {
+    local row_num="$1"
+    local code="$2"
+    local message="$3"
+    local screen=$(tui_capture_ansi)
+    local row=$(echo "$screen" | sed -n "${row_num}p")
+
+    if [[ "$row" != *"$code"* ]]; then
+        echo -e "${GREEN}✓ PASS${NC}: $message"
+        ((TESTS_PASSED++))
+        return 0
+    else
+        # Take failure screenshot and exit immediately
+        tui_screenshot "ASSERT_FAIL_row_no_ansi_code"
+        echo -e "${RED}✗ FAIL${NC}: $message"
+        echo -e "  Row $row_num should NOT contain ANSI code: '$code'"
+        echo -e "  Row content: '$row'"
+        echo -e "  Screenshot: $TUI_LAST_SCREENSHOT"
+        tui_finalize_screenshots "FAIL"
+        tui_cleanup
+        exit 1
+    fi
+}
+
+# Assert left panel area contains an ANSI code (for split-panel color testing)
+# Extracts content before the frame separator │ from content rows
+# Usage: tui_assert_left_panel_has_ansi_code <code> <message>
+# FAILS IMMEDIATELY on assertion failure (exits with code 1)
+tui_assert_left_panel_has_ansi_code() {
+    local code="$1"
+    local message="$2"
+    local screen=$(tui_capture_ansi)
+    # Extract left panel: everything before the last │ on lines that have │
+    local left_content
+    left_content=$(echo "$screen" | sed -n 's/\(.*\)│.*/\1/p')
+
+    if [[ "$left_content" == *"$code"* ]]; then
+        echo -e "${GREEN}✓ PASS${NC}: $message"
+        ((TESTS_PASSED++))
+        return 0
+    else
+        tui_screenshot "ASSERT_FAIL_left_panel_ansi"
+        echo -e "${RED}✗ FAIL${NC}: $message"
+        echo -e "  Expected left panel to contain ANSI code: '$code'"
+        echo -e "  Screenshot: $TUI_LAST_SCREENSHOT"
+        tui_finalize_screenshots "FAIL"
+        tui_cleanup
+        exit 1
+    fi
+}
+
+# Assert left panel area does NOT contain an ANSI code
+# Usage: tui_assert_left_panel_no_ansi_code <code> <message>
+# FAILS IMMEDIATELY on assertion failure (exits with code 1)
+tui_assert_left_panel_no_ansi_code() {
+    local code="$1"
+    local message="$2"
+    local screen=$(tui_capture_ansi)
+    local left_content
+    left_content=$(echo "$screen" | sed -n 's/\(.*\)│.*/\1/p')
+
+    if [[ "$left_content" != *"$code"* ]]; then
+        echo -e "${GREEN}✓ PASS${NC}: $message"
+        ((TESTS_PASSED++))
+        return 0
+    else
+        tui_screenshot "ASSERT_FAIL_left_panel_no_ansi"
+        echo -e "${RED}✗ FAIL${NC}: $message"
+        echo -e "  Left panel should NOT contain ANSI code: '$code'"
+        echo -e "  Screenshot: $TUI_LAST_SCREENSHOT"
+        tui_finalize_screenshots "FAIL"
+        tui_cleanup
+        exit 1
+    fi
+}
+
+# Assert right panel area contains an ANSI code
+# Usage: tui_assert_right_panel_has_ansi_code <code> <message>
+# FAILS IMMEDIATELY on assertion failure (exits with code 1)
+tui_assert_right_panel_has_ansi_code() {
+    local code="$1"
+    local message="$2"
+    local screen=$(tui_capture_ansi)
+    # Extract right panel: everything after the last │ on lines that have │
+    local right_content
+    right_content=$(echo "$screen" | sed -n 's/.*│//p')
+
+    if [[ "$right_content" == *"$code"* ]]; then
+        echo -e "${GREEN}✓ PASS${NC}: $message"
+        ((TESTS_PASSED++))
+        return 0
+    else
+        tui_screenshot "ASSERT_FAIL_right_panel_ansi"
+        echo -e "${RED}✗ FAIL${NC}: $message"
+        echo -e "  Expected right panel to contain ANSI code: '$code'"
+        echo -e "  Screenshot: $TUI_LAST_SCREENSHOT"
+        tui_finalize_screenshots "FAIL"
+        tui_cleanup
+        exit 1
+    fi
+}
+
+# Assert right panel area does NOT contain an ANSI code
+# Usage: tui_assert_right_panel_no_ansi_code <code> <message>
+# FAILS IMMEDIATELY on assertion failure (exits with code 1)
+tui_assert_right_panel_no_ansi_code() {
+    local code="$1"
+    local message="$2"
+    local screen=$(tui_capture_ansi)
+    local right_content
+    right_content=$(echo "$screen" | sed -n 's/.*│//p')
+
+    if [[ "$right_content" != *"$code"* ]]; then
+        echo -e "${GREEN}✓ PASS${NC}: $message"
+        ((TESTS_PASSED++))
+        return 0
+    else
+        tui_screenshot "ASSERT_FAIL_right_panel_no_ansi"
+        echo -e "${RED}✗ FAIL${NC}: $message"
+        echo -e "  Right panel should NOT contain ANSI code: '$code'"
+        echo -e "  Screenshot: $TUI_LAST_SCREENSHOT"
+        tui_finalize_screenshots "FAIL"
+        tui_cleanup
+        exit 1
+    fi
+}
+
 # ============================================================================
 # Utility Functions
 # ============================================================================
