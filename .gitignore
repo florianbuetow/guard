@@ -6,6 +6,7 @@
 
 # Release binaries
 bin/
+guard
 
 # Test binary, built with `go test -c`
 *.test

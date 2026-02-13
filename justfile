@@ -61,7 +61,8 @@ test: build install
         INSTALL_BIN="/tmp/guard-bin"
     fi
     export PATH="$INSTALL_BIN:$PATH"
-    (cd tests && ./run-all-tests.sh)
+    (cd tests && ./run-cli-tests-sequential.sh)
+    (cd tests && ./run-tui-tests-parallel.sh)
     echo ""
 
 # Install guard to GOPATH/bin
@@ -333,12 +334,18 @@ ci-quiet:
     fi
 
     # Run shell tests
-    if OUTPUT=$(cd tests && ./run-all-tests.sh 2>&1); then
-        # Extract just the summary line
-        SUMMARY=$(echo "$OUTPUT" | grep -E "All .* tests passed" || echo "Shell tests passed")
-        echo "✓ $SUMMARY"
+    if OUTPUT=$(cd tests && ./run-cli-tests-sequential.sh 2>&1); then
+        echo "✓ CLI tests passed"
     else
-        echo "✗ Shell tests failed:"
+        echo "✗ CLI tests failed:"
+        echo "$OUTPUT"
+        exit 1
+    fi
+
+    if OUTPUT=$(cd tests && ./run-tui-tests-parallel.sh 2>&1); then
+        echo "✓ TUI tests passed"
+    else
+        echo "✗ TUI tests failed:"
         echo "$OUTPUT"
         exit 1
     fi

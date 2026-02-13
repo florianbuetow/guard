@@ -73,7 +73,7 @@ func (ct CollectionTree) Update(msg tea.Msg) (CollectionTree, tea.Cmd) {
 	case WindowSizeMsg:
 		ct.width = msg.Width
 		ct.height = msg.Height
-		ct.scroll.SetViewportSize(msg.Height - 4)
+		ct.scroll.SetViewportSize(msg.Height)
 
 	case RefreshMsg:
 		ct.refresh()
@@ -238,7 +238,7 @@ func (ct *CollectionTree) GetSelectedNode() *CollectionNode {
 func (ct *CollectionTree) SetSize(width, height int) {
 	ct.width = width
 	ct.height = height
-	ct.scroll.SetViewportSize(height - 4)
+	ct.scroll.SetViewportSize(height)
 }
 
 // Refresh refreshes the tree
