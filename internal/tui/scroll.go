@@ -1,54 +1,5 @@
 package tui
 
-// CalculateVisibleRange calculates the start and end indices of visible items
-// given the current cursor position, total item count, and viewport height.
-// Returns (startIndex, endIndex) where endIndex is exclusive.
-func CalculateVisibleRange(cursor, totalItems, viewportHeight int) (int, int) {
-	if totalItems == 0 || viewportHeight <= 0 {
-		return 0, 0
-	}
-
-	if totalItems <= viewportHeight {
-		return 0, totalItems
-	}
-
-	// Calculate scroll offset to keep cursor visible
-	offset := CalculateScrollOffset(cursor, totalItems, viewportHeight)
-	endIndex := offset + viewportHeight
-	if endIndex > totalItems {
-		endIndex = totalItems
-	}
-
-	return offset, endIndex
-}
-
-// CalculateScrollOffset calculates the scroll offset needed to keep the cursor visible
-func CalculateScrollOffset(cursor, totalItems, viewportHeight int) int {
-	if totalItems <= viewportHeight {
-		return 0
-	}
-
-	// Scroll only when cursor reaches the viewport edge (no margin)
-	minOffset := cursor - viewportHeight + 1
-	if minOffset < 0 {
-		minOffset = 0
-	}
-
-	// Clamp to valid range
-	maxPossibleOffset := totalItems - viewportHeight
-	if maxPossibleOffset < 0 {
-		maxPossibleOffset = 0
-	}
-
-	// Use the minimum offset that satisfies the constraints
-	offset := minOffset
-	if offset > maxPossibleOffset {
-		offset = maxPossibleOffset
-	}
-
-	return offset
-}
-
 // ScrollState tracks the scroll position for a list
 type ScrollState struct {
 	Offset       int // Current scroll offset
