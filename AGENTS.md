@@ -61,6 +61,10 @@ internal/registry/   Data model, YAML serialization (.guardfile)
 - Registry stores relative paths; filesystem operations use absolute paths
 - Platform-specific code lives in `filesystem_darwin.go` / `filesystem_linux.go`
 
+## Git Rules
+
+- **Never use `git -C <path>`** to operate on other worktrees. Always use the full `git` command from the current working directory.
+
 ## Code Style
 
 - Go standard formatting (`go fmt`)
