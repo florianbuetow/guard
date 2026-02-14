@@ -231,7 +231,10 @@ func (a *App) switchPanel() {
 func (a *App) refresh() {
 	// Reload registry
 	if a.mgr != nil {
-		_ = a.mgr.LoadRegistry()
+		if err := a.mgr.LoadRegistry(); err != nil {
+			a.errorModal.Show(err)
+			return
+		}
 	}
 
 	// Refresh panels

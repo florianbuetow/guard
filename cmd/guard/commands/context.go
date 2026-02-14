@@ -14,6 +14,11 @@ func SetManager(ctx context.Context, mgr *manager.Manager) context.Context {
 }
 
 // GetManager retrieves the Manager from the context.
+// Panics if no Manager was stored — callers rely on PersistentPreRunE having set it.
 func GetManager(ctx context.Context) *manager.Manager {
-	return ctx.Value(contextKey{}).(*manager.Manager)
+	mgr, ok := ctx.Value(contextKey{}).(*manager.Manager)
+	if !ok {
+		panic("GetManager: no Manager in context — was PersistentPreRunE skipped?")
+	}
+	return mgr
 }

@@ -98,7 +98,7 @@ and other tools that might change file permissions.`,
 	// Add interactive mode flag
 	rootCmd.PersistentFlags().BoolVarP(&interactive, "interactive", "i", false, "Launch interactive TUI mode")
 
-	// Load registry once for commands that need it
+	// Commands that operate without a .guardfile and skip registry loading
 	skipRegistry := map[string]bool{
 		"init": true, "version": true, "info": true,
 		"help": true, "completion": true,

@@ -1,10 +1,7 @@
 package tui
 
 import (
-	"strings"
-
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
 
 	"github.com/florianbuetow/guard/internal/manager"
 )
@@ -45,71 +42,6 @@ func (p CollectionsPanel) Update(msg tea.Msg) (CollectionsPanel, tea.Cmd) {
 	var cmd tea.Cmd
 	p.tree, cmd = p.tree.Update(msg)
 	return p, cmd
-}
-
-// View renders the panel
-func (p CollectionsPanel) View() string {
-	// Choose style based on focus
-	var borderStyle lipgloss.Style
-	if p.focused {
-		borderStyle = p.styles.PanelActive
-	} else {
-		borderStyle = p.styles.PanelInactive
-	}
-
-	// Calculate inner dimensions
-	innerWidth := p.width - 2
-	innerHeight := p.height - 3
-	if innerWidth < 1 {
-		innerWidth = 1
-	}
-	if innerHeight < 1 {
-		innerHeight = 1
-	}
-
-	// Build title
-	title := p.styles.PanelTitle.Render(p.title)
-	if p.focused {
-		title = "● " + title
-	} else {
-		title = "○ " + title
-	}
-	// Pad title to match panel width for proper horizontal joining
-	if StringWidth(title) < p.width {
-		title = PadRight(title, p.width)
-	}
-
-	// Render tree content
-	content := p.tree.View()
-
-	// Pad content to fill the panel
-	lines := strings.Split(content, "\n")
-	var paddedLines []string
-	for i := 0; i < innerHeight; i++ {
-		if i < len(lines) {
-			line := lines[i]
-			// Ensure line fills width, truncating if too long
-			lineWidth := StringWidth(line)
-			if lineWidth > innerWidth {
-				line = TruncateRight(line, innerWidth)
-			} else if lineWidth < innerWidth {
-				line = PadRight(line, innerWidth)
-			}
-			paddedLines = append(paddedLines, line)
-		} else {
-			paddedLines = append(paddedLines, strings.Repeat(" ", innerWidth))
-		}
-	}
-
-	paddedContent := strings.Join(paddedLines, "\n")
-
-	// Apply border style
-	panel := borderStyle.
-		Width(innerWidth).
-		Height(innerHeight).
-		Render(paddedContent)
-
-	return lipgloss.JoinVertical(lipgloss.Left, title, panel)
 }
 
 // SetFocused sets the focus state
