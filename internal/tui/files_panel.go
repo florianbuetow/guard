@@ -63,8 +63,8 @@ func (p *FilesPanel) SetSize(width, height int) {
 }
 
 // Refresh refreshes the panel content
-func (p *FilesPanel) Refresh() {
-	p.tree.refresh()
+func (p *FilesPanel) Refresh() tea.Cmd {
+	return p.tree.refresh()
 }
 
 // GetTree returns the underlying file tree
