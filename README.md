@@ -393,7 +393,7 @@ If the bug is in the interactive TUI, copy-paste the terminal output showing the
 │                                  ││ Status: guarded                   │
 │                                  ││                                   │
 │                                  ││ BUG: Details pane shows stale     │
-│                                  ││ info after toggling guard status   │
+│                                  ││ info after toggling guard status  │
 └──────────────────────────────────┘└───────────────────────────────────┘
 ```
 
