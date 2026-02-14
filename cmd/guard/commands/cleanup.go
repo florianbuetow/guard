@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/florianbuetow/guard/internal/manager"
 	"github.com/spf13/cobra"
 )
 
@@ -18,13 +17,7 @@ func NewCleanupCmd() *cobra.Command {
 
 This command helps maintain registry integrity by cleaning up orphaned entries.`,
 		Run: func(cmd *cobra.Command, args []string) {
-			mgr := manager.NewManager(".guardfile")
-
-			// Load registry
-			if err := mgr.LoadRegistry(); err != nil {
-				fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-				os.Exit(1)
-			}
+			mgr := GetManager(cmd.Context())
 
 			// Run cleanup
 			result, err := mgr.Cleanup()

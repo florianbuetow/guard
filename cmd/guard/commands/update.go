@@ -5,7 +5,6 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/florianbuetow/guard/internal/manager"
 	"github.com/spf13/cobra"
 )
 
@@ -46,13 +45,7 @@ Files will be registered if they don't exist in the registry.`,
 
 			files := args[2:]
 
-			mgr := manager.NewManager(".guardfile")
-
-			// Load registry
-			if err := mgr.LoadRegistry(); err != nil {
-				fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-				os.Exit(1)
-			}
+			mgr := GetManager(cmd.Context())
 
 			if operation == "add" {
 				// Count how many files will be newly registered

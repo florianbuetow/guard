@@ -37,7 +37,7 @@ To remove files from collections, use: guard update <collection> remove <files>.
 				os.Exit(1)
 			}
 
-			removeFiles(args)
+			removeFiles(GetManager(cmd.Context()), args)
 		},
 	}
 
@@ -48,15 +48,7 @@ To remove files from collections, use: guard update <collection> remove <files>.
 }
 
 // removeFiles is the shared implementation for removing files.
-func removeFiles(args []string) {
-	mgr := manager.NewManager(".guardfile")
-
-	// Load registry
-	if err := mgr.LoadRegistry(); err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-		os.Exit(1)
-	}
-
+func removeFiles(mgr *manager.Manager, args []string) {
 	// Count files in registry before removal
 	inRegistry := 0
 	notInRegistry := 0
@@ -114,7 +106,7 @@ To remove files from collections, use: guard update <collection> remove <files>.
 				os.Exit(1)
 			}
 
-			removeFiles(args)
+			removeFiles(GetManager(cmd.Context()), args)
 		},
 	}
 }

@@ -9,6 +9,8 @@ This repository does not currently use release tags, so entries are grouped by d
 
 ### Changed
 
+- Extracted `LoadRegistry` boilerplate from 14 command files (26 call sites) into a single `PersistentPreRunE` in `main.go`, passing the manager via command context.
+- Replaced `Manager.GetFileSystem().CheckFilesExist()` calls in `enable.go`, `disable.go`, and `toggle.go` with `Manager.CheckFilesExist()`, removing the leaked filesystem accessor.
 - Replaced `matchKeyBinding` with the existing `matchKey` helper in `CollectionTree`, removing a redundant function and an unused import.
 - Extracted `padContentToFit()` helper in `frame.go`, deduplicating ~17 lines of identical padding logic from `FilesPanel.ContentLines()` and `CollectionsPanel.ContentLines()`.
 - Replaced 10-line guard-binary lookup boilerplate across 199 test files with a shared `find_guard_binary` function in `helpers-cli.sh`.
@@ -16,9 +18,15 @@ This repository does not currently use release tags, so entries are grouped by d
 
 ### Added
 
+- Added `CheckFilesExist` method to `Manager`, delegating to the filesystem layer without exposing it.
+- Added `SetManager`/`GetManager` context helpers in `cmd/guard/commands/context.go` for passing manager from `PersistentPreRunE` to command `Run` functions.
 - Added `find_guard_binary` helper to `helpers-cli.sh` for consistent guard binary resolution across all test files. Also adds `./bin/guard` as a search path (matching the `just build` output directory), which was not present in the original per-test boilerplate.
 - Added `padContentToFit` utility to `frame.go` for reusable panel content padding.
 - Added Go unit tests for `CalculateScrollOffset`, `CalculateVisibleRange`, and `ScrollState` in `scroll_test.go`.
+
+### Removed
+
+- Removed `Manager.GetFileSystem()` accessor that leaked the filesystem layer through the manager API.
 
 ## [2026-02-13]
 

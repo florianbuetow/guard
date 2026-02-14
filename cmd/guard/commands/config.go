@@ -37,13 +37,7 @@ Output format:
   Owner: <username or (empty)>
   Group: <group name or (empty)>`,
 		Run: func(cmd *cobra.Command, args []string) {
-			mgr := manager.NewManager(".guardfile")
-
-			// Load registry
-			if err := mgr.LoadRegistry(); err != nil {
-				fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-				os.Exit(1)
-			}
+			mgr := GetManager(cmd.Context())
 
 			// Show config
 			config, err := mgr.GetConfig()
@@ -86,13 +80,7 @@ Bulk update (positional):
 				os.Exit(1)
 			}
 
-			mgr := manager.NewManager(".guardfile")
-
-			// Load registry
-			if err := mgr.LoadRegistry(); err != nil {
-				fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-				os.Exit(1)
-			}
+			mgr := GetManager(cmd.Context())
 
 			var (
 				result *manager.ConfigUpdateResult

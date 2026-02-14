@@ -93,13 +93,7 @@ Examples:
 				os.Exit(1)
 			}
 
-			mgr := manager.NewManager(".guardfile")
-
-			// Load registry
-			if err := mgr.LoadRegistry(); err != nil {
-				fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-				os.Exit(1)
-			}
+			mgr := GetManager(cmd.Context())
 
 			// Use auto-detection to resolve arguments
 			files, folders, collections, err := mgr.ResolveArguments(args)
@@ -174,13 +168,7 @@ generate warnings.`,
 				os.Exit(1)
 			}
 
-			mgr := manager.NewManager(".guardfile")
-
-			// Load registry
-			if err := mgr.LoadRegistry(); err != nil {
-				fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-				os.Exit(1)
-			}
+			mgr := GetManager(cmd.Context())
 
 			// Toggle files with output
 			if toggleFilesWithOutput(mgr, args) {
@@ -222,13 +210,7 @@ Folders are dynamic collections that scan files from disk. On toggle:
 				os.Exit(1)
 			}
 
-			mgr := manager.NewManager(".guardfile")
-
-			// Load registry
-			if err := mgr.LoadRegistry(); err != nil {
-				fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-				os.Exit(1)
-			}
+			mgr := GetManager(cmd.Context())
 
 			// Toggle folders
 			if err := mgr.ToggleFolders(args); err != nil {
@@ -269,13 +251,7 @@ states, an error will be returned and no changes will be made (conflict detectio
 				os.Exit(1)
 			}
 
-			mgr := manager.NewManager(".guardfile")
-
-			// Load registry
-			if err := mgr.LoadRegistry(); err != nil {
-				fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-				os.Exit(1)
-			}
+			mgr := GetManager(cmd.Context())
 
 			// Check if any collections exist
 			validCollections := 0
@@ -326,7 +302,7 @@ states, an error will be returned and no changes will be made (conflict detectio
 				// Get collection's current guard state to determine message
 				guardState := status.Guard
 
-				existing, _ := mgr.GetFileSystem().CheckFilesExist(status.Files)
+				existing, _ := mgr.CheckFilesExist(status.Files)
 				sort.Strings(existing)
 				for _, file := range existing {
 					if guardState {

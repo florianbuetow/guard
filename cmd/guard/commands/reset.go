@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/florianbuetow/guard/internal/manager"
 	"github.com/spf13/cobra"
 )
 
@@ -20,13 +19,7 @@ This restores original permissions for all files but keeps them in the registry.
 Files that don't exist on disk will generate warnings. Run cleanup afterwards
 to remove orphaned entries.`,
 		Run: func(cmd *cobra.Command, args []string) {
-			mgr := manager.NewManager(".guardfile")
-
-			// Load registry
-			if err := mgr.LoadRegistry(); err != nil {
-				fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-				os.Exit(1)
-			}
+			mgr := GetManager(cmd.Context())
 
 			// Run reset
 			result, err := mgr.Reset()
