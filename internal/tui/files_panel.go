@@ -144,40 +144,7 @@ func (p *FilesPanel) GetTree() *FileTree {
 
 // ContentLines returns the panel content as lines without borders
 func (p *FilesPanel) ContentLines() []string {
-	// Calculate inner dimensions (no borders needed since frame handles them)
-	innerWidth := p.width
-	innerHeight := p.height
-
-	if innerWidth < 1 {
-		innerWidth = 1
-	}
-	if innerHeight < 1 {
-		innerHeight = 1
-	}
-
-	// Render tree content
-	content := p.tree.View()
-
-	// Pad content to fill the panel
-	lines := strings.Split(content, "\n")
-	var paddedLines []string
-	for i := 0; i < innerHeight; i++ {
-		if i < len(lines) {
-			line := lines[i]
-			// Ensure line fills width, truncating if too long
-			lineWidth := StringWidth(line)
-			if lineWidth > innerWidth {
-				line = TruncateRight(line, innerWidth)
-			} else if lineWidth < innerWidth {
-				line = PadRight(line, innerWidth)
-			}
-			paddedLines = append(paddedLines, line)
-		} else {
-			paddedLines = append(paddedLines, strings.Repeat(" ", innerWidth))
-		}
-	}
-
-	return paddedLines
+	return padContentToFit(p.tree.View(), p.width, p.height)
 }
 
 // Title returns the panel title

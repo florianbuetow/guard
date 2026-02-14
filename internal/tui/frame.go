@@ -179,6 +179,28 @@ func renderBottomBorder(totalWidth int) string {
 	return result.String()
 }
 
+// padContentToFit takes raw rendered content and returns exactly height lines,
+// each exactly width characters wide. Used by panel ContentLines() methods.
+func padContentToFit(content string, width, height int) []string {
+	if width < 1 {
+		width = 1
+	}
+	if height < 1 {
+		height = 1
+	}
+
+	lines := strings.Split(content, "\n")
+	result := make([]string, height)
+	for i := range height {
+		if i < len(lines) {
+			result[i] = padOrTruncate(lines[i], width)
+		} else {
+			result[i] = strings.Repeat(" ", width)
+		}
+	}
+	return result
+}
+
 // padOrTruncate ensures a string is exactly the specified width
 func padOrTruncate(s string, width int) string {
 	sWidth := StringWidth(s)

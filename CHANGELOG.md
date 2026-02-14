@@ -37,7 +37,7 @@ This repository does not currently use release tags, so entries are grouped by d
 ### Fixed
 
 - Fixed a TUI layout issue that left three blank lines above the status bar due to duplicate height/border accounting.
-- Fixed test discovery in `tests/run-all-tests.sh` so `tui` matching no longer misclassifies tests based on directory names.
+- Fixed test discovery in `tests/run-all-tests.sh` (since replaced by split CLI/TUI runners — see 2026-02-13) so `tui` matching no longer misclassifies tests based on directory names.
 
 ### Added
 

@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 
@@ -62,11 +61,11 @@ func (ct CollectionTree) Update(msg tea.Msg) (CollectionTree, tea.Cmd) {
 		}
 
 		switch {
-		case matchKeyBinding(msg, ct.keys.Up):
+		case matchKey(msg, ct.keys.Up):
 			ct.moveCursorUp()
-		case matchKeyBinding(msg, ct.keys.Down):
+		case matchKey(msg, ct.keys.Down):
 			ct.moveCursorDown()
-		case matchKeyBinding(msg, ct.keys.Toggle):
+		case matchKey(msg, ct.keys.Toggle):
 			return ct, ct.toggleGuard()
 		}
 
@@ -244,14 +243,4 @@ func (ct *CollectionTree) SetSize(width, height int) {
 // Refresh refreshes the tree
 func (ct *CollectionTree) Refresh() {
 	ct.refresh()
-}
-
-// matchKeyBinding checks if a key message matches a key binding
-func matchKeyBinding(msg tea.KeyMsg, binding key.Binding) bool {
-	for _, k := range binding.Keys() {
-		if msg.String() == k {
-			return true
-		}
-	}
-	return false
 }
