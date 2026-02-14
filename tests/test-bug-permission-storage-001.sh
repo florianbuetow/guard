@@ -27,15 +27,7 @@ source "$SCRIPT_DIR/helpers-cli.sh"
 set -e
 
 # Find guard binary
-GUARD_BIN=""
-if [ -f "./guard" ]; then
-    GUARD_BIN="$(pwd)/guard"
-elif command -v guard &> /dev/null; then
-    GUARD_BIN="guard"
-else
-    echo "Error: guard binary not found. Please build it first."
-    exit 1
-fi
+find_guard_binary
 
 # Helper: Get stored mode from .guardfile for a file
 get_stored_mode() {
@@ -84,7 +76,7 @@ test_add_guarded_file_to_collection_preserves_permissions() {
              "BUG #6: Adding guarded file to collection should NOT overwrite stored permissions"
 
     # Setup
-    $GUARD_BIN init 000 flo staff
+    $GUARD_BIN init 000 "$(get_current_user)" "$(get_current_group)"
 
     # Create file with specific permissions (644)
     touch testfile.txt

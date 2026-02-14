@@ -9,15 +9,7 @@ source "$SCRIPT_DIR/helpers-cli.sh"
 set -e
 
 # Find guard binary
-GUARD_BIN=""
-if [ -f "./guard" ]; then
-    GUARD_BIN="$(pwd)/guard"
-elif command -v guard &> /dev/null; then
-    GUARD_BIN="guard"
-else
-    echo "Error: guard binary not found. Please build it first."
-    exit 1
-fi
+find_guard_binary
 
 # ============================================================================
 # Test 5: Init with valid mode range boundaries (Positive)
@@ -27,7 +19,7 @@ test_init_valid_mode_range() {
              "Positive test: guard init with boundary values 000 and 777"
 
     # Test with mode 000
-    $GUARD_BIN init 000 flo staff
+    $GUARD_BIN init 000 "$(get_current_user)" "$(get_current_group)"
     local exit_code1=$?
     assert_exit_code $exit_code1 0 "guard init 000 should succeed"
     assert_guardfile_exists ".guardfile should be created for mode 000"

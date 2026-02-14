@@ -29,13 +29,7 @@ Examples:
 
 When no names are specified, all registered items are shown.`,
 		Run: func(cmd *cobra.Command, args []string) {
-			mgr := manager.NewManager(".guardfile")
-
-			// Load registry
-			if err := mgr.LoadRegistry(); err != nil {
-				fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-				os.Exit(1)
-			}
+			mgr := GetManager(cmd.Context())
 
 			if len(args) == 0 {
 				// Show all files and collections
@@ -193,13 +187,7 @@ Output format: G/- filename (collections)
 
 If no files are specified, all registered files are shown.`,
 		Run: func(cmd *cobra.Command, args []string) {
-			mgr := manager.NewManager(".guardfile")
-
-			// Load registry
-			if err := mgr.LoadRegistry(); err != nil {
-				fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-				os.Exit(1)
-			}
+			mgr := GetManager(cmd.Context())
 
 			// Get file information from manager
 			fileInfos, err := mgr.ShowFiles(args)
@@ -254,13 +242,7 @@ If no collections are specified, all collections are shown with their status
 and file count (but not individual files). If specific collections are requested,
 individual files in those collections are also listed.`,
 		Run: func(cmd *cobra.Command, args []string) {
-			mgr := manager.NewManager(".guardfile")
-
-			// Load registry
-			if err := mgr.LoadRegistry(); err != nil {
-				fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-				os.Exit(1)
-			}
+			mgr := GetManager(cmd.Context())
 
 			if len(args) == 0 {
 				if err := showAllCollections(mgr); err != nil {

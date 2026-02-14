@@ -23,15 +23,7 @@ source "$SCRIPT_DIR/helpers-cli.sh"
 set -e
 
 # Find guard binary
-GUARD_BIN=""
-if [ -f "./guard" ]; then
-    GUARD_BIN="$(pwd)/guard"
-elif command -v guard &> /dev/null; then
-    GUARD_BIN="guard"
-else
-    echo "Error: guard binary not found. Please build it first."
-    exit 1
-fi
+find_guard_binary
 
 # ============================================================================
 # BUG #3: Collection/folder toggling syncs to collection state, not individual
@@ -41,7 +33,7 @@ test_toggle_collection_syncs_all_files_to_same_state() {
              "BUG #3: After toggling collection, ALL files should have the SAME guard state"
 
     # Setup
-    $GUARD_BIN init 000 flo staff
+    $GUARD_BIN init 000 "$(get_current_user)" "$(get_current_group)"
     touch file1.txt file2.txt file3.txt
     $GUARD_BIN create mycoll
     $GUARD_BIN update mycoll add file1.txt file2.txt file3.txt

@@ -108,9 +108,9 @@ func (m *Manager) InitializeRegistry(mode, owner, group string, overwrite bool) 
 	return nil
 }
 
-// GetFileSystem returns the underlying filesystem (for testing).
-func (m *Manager) GetFileSystem() *filesystem.FileSystem {
-	return m.fs
+// CheckFilesExist checks which paths exist on disk.
+func (m *Manager) CheckFilesExist(paths []string) (existing, missing []string) {
+	return m.fs.CheckFilesExist(paths)
 }
 
 // IsRegisteredFile returns true if the file is registered in the registry.

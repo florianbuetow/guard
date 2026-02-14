@@ -9,15 +9,7 @@ source "$SCRIPT_DIR/helpers-cli.sh"
 set -e
 
 # Find guard binary
-GUARD_BIN=""
-if [ -f "./guard" ]; then
-    GUARD_BIN="$(pwd)/guard"
-elif command -v guard &> /dev/null; then
-    GUARD_BIN="guard"
-else
-    echo "Error: guard binary not found. Please build it first."
-    exit 1
-fi
+find_guard_binary
 
 # ============================================================================
 # Test 7: Init when .guardfile already exists (Negative)
@@ -31,7 +23,7 @@ test_init_already_exists() {
 
     # Try to init again (should fail immediately before prompting)
     set +e
-    $GUARD_BIN init 000 flo staff > /dev/null 2>&1
+    $GUARD_BIN init 000 "$(get_current_user)" "$(get_current_group)" > /dev/null 2>&1
     local exit_code=$?
     set -e
 

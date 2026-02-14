@@ -21,15 +21,7 @@ source "$SCRIPT_DIR/helpers-cli.sh"
 set -e
 
 # Find guard binary
-GUARD_BIN=""
-if [ -f "./guard" ]; then
-    GUARD_BIN="$(pwd)/guard"
-elif command -v guard &> /dev/null; then
-    GUARD_BIN="guard"
-else
-    echo "Error: guard binary not found. Please build it first."
-    exit 1
-fi
+find_guard_binary
 
 # Check for required tools
 check_tui_test_requirements() {
@@ -101,7 +93,7 @@ test_tui_uses_full_terminal_height() {
              "BUG #4: TUI should use full available height for file list"
 
     # Setup - create 30 files as per BUGS.md spec
-    $GUARD_BIN init 000 flo staff
+    $GUARD_BIN init 000 "$(get_current_user)" "$(get_current_group)"
 
     for i in $(seq -w 1 30); do
         touch "file_$i.txt"

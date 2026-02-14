@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/florianbuetow/guard/internal/manager"
 	"github.com/spf13/cobra"
 )
 
@@ -29,13 +28,7 @@ Use this to empty a collection while keeping the collection and file registratio
 				os.Exit(1)
 			}
 
-			mgr := manager.NewManager(".guardfile")
-
-			// Load registry
-			if err := mgr.LoadRegistry(); err != nil {
-				fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-				os.Exit(1)
-			}
+			mgr := GetManager(cmd.Context())
 
 			// Track collection file counts before clearing
 			type collectionInfo struct {

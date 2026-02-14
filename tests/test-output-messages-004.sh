@@ -9,16 +9,8 @@ source "$SCRIPT_DIR/helpers-cli.sh"
 set -e
 
 
-# Find guard binary (use absolute path to work from temp directories)
-GUARD_BIN=""
-if [ -f "./guard" ]; then
-    GUARD_BIN="$(pwd)/guard"
-elif command -v guard &> /dev/null; then
-    GUARD_BIN="guard"
-else
-    echo "Error: guard binary not found. Please build it first."
-    exit 1
-fi
+# Find guard binary
+find_guard_binary
 
 # ============================================================================
 # UNINSTALL COMMAND OUTPUT TESTS (Issue 8)
@@ -28,7 +20,7 @@ test_output_uninstall_command() {
              "Verify output shows 'All guards disabled', 'Cleanup completed', '.guardfile deleted'"
 
     # Setup
-    $GUARD_BIN init 000 flo staff
+    $GUARD_BIN init 000 "$(get_current_user)" "$(get_current_group)"
     touch file1.txt file2.txt
     # OLD: $GUARD_BIN add file file1.txt file2.txt to mycoll > /dev/null 2>&1
     # NEW:

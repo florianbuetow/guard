@@ -35,6 +35,26 @@ get_current_group() {
 }
 
 # ============================================================================
+# Guard Binary Discovery
+# ============================================================================
+
+# Find the guard binary (./guard or on PATH), set GUARD_BIN, or exit 1
+# Usage: find_guard_binary  (sets GUARD_BIN global)
+find_guard_binary() {
+    GUARD_BIN=""
+    if [ -f "./guard" ]; then
+        GUARD_BIN="$(pwd)/guard"
+    elif [ -f "./bin/guard" ]; then
+        GUARD_BIN="$(pwd)/bin/guard"
+    elif command -v guard &> /dev/null; then
+        GUARD_BIN="guard"
+    else
+        echo "Error: guard binary not found. Please build it first."
+        exit 1
+    fi
+}
+
+# ============================================================================
 # File System Helpers
 # ============================================================================
 

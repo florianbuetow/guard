@@ -62,7 +62,7 @@ test: build install
     fi
     export PATH="$INSTALL_BIN:$PATH"
     (cd tests && ./run-cli-tests-sequential.sh)
-    (cd tests && ./run-tui-tests-parallel.sh)
+    (cd tests && SKIP_CLI_PREREQ=1 ./run-tui-tests-parallel.sh)
     echo ""
 
 # Install guard to GOPATH/bin
@@ -342,7 +342,7 @@ ci-quiet:
         exit 1
     fi
 
-    if OUTPUT=$(cd tests && ./run-tui-tests-parallel.sh 2>&1); then
+    if OUTPUT=$(cd tests && SKIP_CLI_PREREQ=1 ./run-tui-tests-parallel.sh 2>&1); then
         echo "✓ TUI tests passed"
     else
         echo "✗ TUI tests failed:"

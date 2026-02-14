@@ -33,13 +33,7 @@ Examples:
 				os.Exit(1)
 			}
 
-			mgr := manager.NewManager(".guardfile")
-
-			// Load registry
-			if err := mgr.LoadRegistry(); err != nil {
-				fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-				os.Exit(1)
-			}
+			mgr := GetManager(cmd.Context())
 
 			// Use auto-detection to resolve arguments
 			files, folders, collections, err := mgr.ResolveArguments(args)
@@ -159,13 +153,7 @@ then guard will be enabled. Files missing on disk will generate warnings.`,
 				os.Exit(1)
 			}
 
-			mgr := manager.NewManager(".guardfile")
-
-			// Load registry
-			if err := mgr.LoadRegistry(); err != nil {
-				fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-				os.Exit(1)
-			}
+			mgr := GetManager(cmd.Context())
 
 			// Count files already enabled before operation
 			alreadyEnabled := 0
@@ -234,13 +222,7 @@ Folders are dynamic collections that scan files from disk. On enable:
 				os.Exit(1)
 			}
 
-			mgr := manager.NewManager(".guardfile")
-
-			// Load registry
-			if err := mgr.LoadRegistry(); err != nil {
-				fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-				os.Exit(1)
-			}
+			mgr := GetManager(cmd.Context())
 
 			// Enable folders
 			if err := mgr.EnableFolders(args); err != nil {
@@ -282,13 +264,7 @@ Empty or non-existent collections will generate warnings.`,
 				os.Exit(1)
 			}
 
-			mgr := manager.NewManager(".guardfile")
-
-			// Load registry
-			if err := mgr.LoadRegistry(); err != nil {
-				fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-				os.Exit(1)
-			}
+			mgr := GetManager(cmd.Context())
 
 			// Enable collections
 			if err := mgr.EnableCollections(args); err != nil {
@@ -316,7 +292,7 @@ Empty or non-existent collections will generate warnings.`,
 				}
 
 				// Check which files exist on disk and print them (sorted)
-				existing, _ := mgr.GetFileSystem().CheckFilesExist(status.Files)
+				existing, _ := mgr.CheckFilesExist(status.Files)
 				sort.Strings(existing)
 
 				// Print header for this collection's files

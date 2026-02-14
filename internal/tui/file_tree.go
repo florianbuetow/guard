@@ -70,7 +70,7 @@ func (ft FileTree) Update(msg tea.Msg) (FileTree, tea.Cmd) {
 		case matchKey(msg, ft.keys.Left):
 			ft.handleLeft()
 		case matchKey(msg, ft.keys.Right):
-			ft.handleRight()
+			return ft, ft.handleRight()
 		case matchKey(msg, ft.keys.Toggle):
 			return ft, ft.toggleGuard()
 		case matchKey(msg, ft.keys.ToggleAll):
@@ -83,7 +83,9 @@ func (ft FileTree) Update(msg tea.Msg) (FileTree, tea.Cmd) {
 		ft.scroll.SetViewportSize(msg.Height) // Panel already accounts for borders
 
 	case RefreshMsg:
-		ft.refresh()
+		if cmd := ft.refresh(); cmd != nil {
+			return ft, cmd
+		}
 	}
 
 	return ft, nil
@@ -210,9 +212,9 @@ func (ft *FileTree) handleLeft() {
 	}
 }
 
-func (ft *FileTree) handleRight() {
+func (ft *FileTree) handleRight() tea.Cmd {
 	if len(ft.flatNodes) == 0 {
-		return
+		return nil
 	}
 
 	node := ft.flatNodes[ft.cursor].Node
@@ -220,7 +222,9 @@ func (ft *FileTree) handleRight() {
 	if node.IsDir && !node.IsSymlink {
 		if !node.Expanded {
 			// Expand the folder
-			_ = node.Expand(ft.mgr)
+			if err := node.Expand(ft.mgr); err != nil {
+				return func() tea.Msg { return ErrorMsg{Err: err} }
+			}
 			ft.refreshFlatNodes()
 		} else if len(node.Children) > 0 {
 			// Move to first child
@@ -228,6 +232,7 @@ func (ft *FileTree) handleRight() {
 			ft.scroll.Update(ft.cursor, len(ft.flatNodes))
 		}
 	}
+	return nil
 }
 
 // toggleGuard toggles the guard state of the current node
@@ -313,7 +318,9 @@ func (ft *FileTree) toggleFolderGuard(node *FileNode, recursive bool) tea.Cmd {
 	}
 
 	// Refresh the tree
-	ft.refresh()
+	if errCmd := ft.refresh(); errCmd != nil {
+		return errCmd
+	}
 
 	return func() tea.Msg {
 		return GuardToggledMsg{
@@ -326,15 +333,18 @@ func (ft *FileTree) toggleFolderGuard(node *FileNode, recursive bool) tea.Cmd {
 }
 
 // refresh refreshes the tree from disk
-func (ft *FileTree) refresh() {
+func (ft *FileTree) refresh() tea.Cmd {
 	if ft.root == nil || ft.mgr == nil {
-		return
+		return nil
 	}
 
 	// Reload children
-	_ = ft.root.RefreshChildren(ft.mgr)
+	if err := ft.root.RefreshChildren(ft.mgr); err != nil {
+		return func() tea.Msg { return ErrorMsg{Err: err} }
+	}
 	UpdateGuardStates(ft.root, ft.mgr)
 	ft.refreshFlatNodes()
+	return nil
 }
 
 // SetFocused sets the focus state

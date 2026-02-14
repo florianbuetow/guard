@@ -10,15 +10,7 @@ source "$SCRIPT_DIR/helpers-cli.sh"
 set -e
 
 # Find guard binary
-GUARD_BIN=""
-if [ -f "./guard" ]; then
-    GUARD_BIN="$(pwd)/guard"
-elif command -v guard &> /dev/null; then
-    GUARD_BIN="guard"
-else
-    echo "Error: guard binary not found. Please build it first."
-    exit 1
-fi
+find_guard_binary
 
 # ============================================================================
 # DISABLE AUTO-DETECTION TESTS - MIXED FILES AND COLLECTIONS
@@ -28,7 +20,7 @@ test_disable_auto_detect_mixed() {
              "Auto-detect: disable mix of files and collections"
 
     # Setup
-    $GUARD_BIN init 000 flo staff
+    $GUARD_BIN init 000 "$(get_current_user)" "$(get_current_group)"
     touch standalone.txt coll_file.txt
     $GUARD_BIN add file standalone.txt
     $GUARD_BIN create mycoll

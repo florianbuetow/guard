@@ -17,15 +17,7 @@ source "$SCRIPT_DIR/helpers-tui.sh"
 set -e
 
 # Find guard binary
-GUARD_BIN=""
-if [ -f "./guard" ]; then
-    GUARD_BIN="$(pwd)/guard"
-elif command -v guard &> /dev/null; then
-    GUARD_BIN="guard"
-else
-    echo "Error: guard binary not found. Please build it first."
-    exit 1
-fi
+find_guard_binary
 
 # Check for tmux (required for TUI tests)
 if ! tui_check_tmux; then
@@ -41,7 +33,7 @@ test_error_modal_dismiss_enter() {
 
     # This test requires triggering an error condition
     # For now, we test the basic flow
-    $GUARD_BIN init 000 flo staff
+    $GUARD_BIN init 000 "$(get_current_user)" "$(get_current_group)"
     touch testfile.txt
 
     # Launch TUI
@@ -58,5 +50,4 @@ test_error_modal_dismiss_enter() {
 }
 
 # Run test
-run_test test_error_modal_dismiss_enter
-print_test_summary 1
+tui_run_test test_error_modal_dismiss_enter

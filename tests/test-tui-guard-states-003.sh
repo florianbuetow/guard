@@ -23,15 +23,7 @@ source "$SCRIPT_DIR/helpers-tui.sh"
 set -e
 
 # Find guard binary
-GUARD_BIN=""
-if [ -f "./guard" ]; then
-    GUARD_BIN="$(pwd)/guard"
-elif command -v guard &> /dev/null; then
-    GUARD_BIN="guard"
-else
-    echo "Error: guard binary not found. Please build it first."
-    exit 1
-fi
+find_guard_binary
 
 # Check for tmux (required for TUI tests)
 if ! tui_check_tmux; then
@@ -46,7 +38,7 @@ test_collection_indicator_guarded() {
              "Collection shows [G] when explicitly guarded with all files guarded"
 
     # Setup
-    $GUARD_BIN init 000 flo staff
+    $GUARD_BIN init 000 "$(get_current_user)" "$(get_current_group)"
     touch file1.txt file2.txt
     # Create and enable collection
     $GUARD_BIN create mycoll
@@ -67,5 +59,4 @@ test_collection_indicator_guarded() {
 }
 
 # Run test
-run_test test_collection_indicator_guarded
-print_test_summary 1
+tui_run_test test_collection_indicator_guarded

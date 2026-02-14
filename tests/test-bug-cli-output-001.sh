@@ -16,15 +16,7 @@ source "$SCRIPT_DIR/helpers-cli.sh"
 set -e
 
 # Find guard binary
-GUARD_BIN=""
-if [ -f "./guard" ]; then
-    GUARD_BIN="$(pwd)/guard"
-elif command -v guard &> /dev/null; then
-    GUARD_BIN="guard"
-else
-    echo "Error: guard binary not found. Please build it first."
-    exit 1
-fi
+find_guard_binary
 
 # ============================================================================
 # BUG #7: guard toggle collection doesn't display output
@@ -34,7 +26,7 @@ test_toggle_collection_displays_enabled_disabled() {
              "BUG #7: Toggle collection should display whether guard was enabled or disabled"
 
     # Setup
-    $GUARD_BIN init 000 flo staff
+    $GUARD_BIN init 000 "$(get_current_user)" "$(get_current_group)"
     touch doc1.txt doc2.txt
     $GUARD_BIN create docs
     $GUARD_BIN update docs add doc1.txt doc2.txt

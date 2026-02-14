@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"github.com/florianbuetow/guard/cmd/guard/commands"
+	"github.com/florianbuetow/guard/internal/manager"
 	"github.com/florianbuetow/guard/internal/tui"
 	"github.com/spf13/cobra"
 )
@@ -88,11 +89,41 @@ and other tools that might change file permissions.`,
 		},
 	}
 
+	// Silence Cobra default error printing; errors from Execute() handled below
+	rootCmd.SilenceErrors = true
+	// Prevent usage dump when PersistentPreRunE returns an error
+	rootCmd.SilenceUsage = true
+
 	// Set custom help template
 	rootCmd.SetHelpTemplate(customHelpTemplate)
 
 	// Add interactive mode flag
 	rootCmd.PersistentFlags().BoolVarP(&interactive, "interactive", "i", false, "Launch interactive TUI mode")
+
+	// Commands that operate without a .guardfile and skip registry loading
+	skipRegistry := map[string]bool{
+		"init": true, "version": true, "info": true,
+		"help": true, "completion": true,
+	}
+	rootCmd.PersistentPreRunE = func(cmd *cobra.Command, args []string) error {
+		// Root command (no subcommand) doesn't need registry
+		if !cmd.HasParent() {
+			return nil
+		}
+		// Walk the command chain: leaf commands like "completion bash"
+		// have Name()=="bash", so we must also check parent names.
+		for c := cmd; c != nil; c = c.Parent() {
+			if skipRegistry[c.Name()] {
+				return nil
+			}
+		}
+		mgr := manager.NewManager(".guardfile")
+		if err := mgr.LoadRegistry(); err != nil {
+			return err
+		}
+		cmd.SetContext(commands.SetManager(cmd.Context(), mgr))
+		return nil
+	}
 
 	// Add all subcommands
 	rootCmd.AddCommand(commands.NewInitCmd())
@@ -115,7 +146,7 @@ and other tools that might change file permissions.`,
 
 	// Execute root command
 	if err := rootCmd.Execute(); err != nil {
-		fmt.Fprintln(os.Stderr, err)
+		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)
 	}
 }

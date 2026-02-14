@@ -138,12 +138,13 @@ tui_fail() {
 # TUI Session Management
 # ============================================================================
 
-# Start the TUI in a tmux session with specified dimensions
-# Usage: tui_start [width] [height]
-# Returns: 0 on success, calls tui_fail on failure
-tui_start() {
-    local width="${1:-$TUI_DEFAULT_WIDTH}"
-    local height="${2:-$TUI_DEFAULT_HEIGHT}"
+# Create a fresh tmux session with specified dimensions
+# Shared setup for all tui_start* variants: kill old session, wait, create, cd
+# Usage: _tui_create_session <width> <height> <context>
+_tui_create_session() {
+    local width="$1"
+    local height="$2"
+    local context="$3"
 
     # Kill any existing session with same name and wait for it to terminate
     tmux kill-session -t "$TUI_SESSION" 2>/dev/null || true
@@ -156,17 +157,24 @@ tui_start() {
 
     # Create new detached session with specific size
     if ! tmux new-session -d -s "$TUI_SESSION" -x "$width" -y "$height" 2>/dev/null; then
-        tui_fail "Failed to create tmux session"
+        tui_fail "Failed to create tmux session ($context)"
     fi
 
-    # Change to current working directory in the tmux session
-    # Use 'cd -P .' workaround to handle long paths in narrow terminals
-    local current_dir="$(pwd)"
-    # Create a symbolic link with a short name to avoid path wrapping
+    # Change to current working directory using short symlink to avoid path wrapping
     local short_link="/tmp/_gt$$"
-    ln -sfn "$current_dir" "$short_link"
+    ln -sfn "$(pwd)" "$short_link"
     tmux send-keys -t "$TUI_SESSION" "cd $short_link" Enter
     sleep 0.5
+}
+
+# Start the TUI in a tmux session with specified dimensions
+# Usage: tui_start [width] [height]
+# Returns: 0 on success, calls tui_fail on failure
+tui_start() {
+    local width="${1:-$TUI_DEFAULT_WIDTH}"
+    local height="${2:-$TUI_DEFAULT_HEIGHT}"
+
+    _tui_create_session "$width" "$height" "tui_start"
 
     # Start guard TUI in the session
     tmux send-keys -t "$TUI_SESSION" "$GUARD_BIN -i" Enter
@@ -189,17 +197,7 @@ tui_start_capture_error() {
 
     TUI_STDERR_FILE=$(mktemp)
 
-    # Kill any existing session
-    tmux kill-session -t "$TUI_SESSION" 2>/dev/null || true
-
-    # Create new session
-    if ! tmux new-session -d -s "$TUI_SESSION" -x "$width" -y "$height" 2>/dev/null; then
-        tui_fail "Failed to create tmux session for error capture"
-    fi
-
-    # Change to current directory
-    tmux send-keys -t "$TUI_SESSION" "cd $(pwd)" Enter
-    sleep 0.1
+    _tui_create_session "$width" "$height" "tui_start_capture_error"
 
     # Start guard TUI with stderr redirect
     tmux send-keys -t "$TUI_SESSION" "$GUARD_BIN -i 2>$TUI_STDERR_FILE" Enter
@@ -262,7 +260,9 @@ tui_send_keys() {
 # Usage: tui_send_keys_fast <keys>
 tui_send_keys_fast() {
     local keys="$1"
-    tmux send-keys -t "$TUI_SESSION" "$keys" 2>/dev/null || true
+    if ! tmux send-keys -t "$TUI_SESSION" "$keys" 2>/dev/null; then
+        tui_fail "Failed to send keys (fast) '$keys' - tmux session may have died"
+    fi
 }
 
 # Send multiple keys with delay between each
@@ -277,7 +277,9 @@ tui_send_key_sequence() {
 # Usage: tui_type "text to type"
 tui_type() {
     local text="$1"
-    tmux send-keys -t "$TUI_SESSION" -l "$text" 2>/dev/null || true
+    if ! tmux send-keys -t "$TUI_SESSION" -l "$text" 2>/dev/null; then
+        tui_fail "Failed to type '$text' - tmux session may have died"
+    fi
     sleep "$TUI_RENDER_DELAY"
 
     # Take screenshot after typing
@@ -291,13 +293,21 @@ tui_type() {
 # Capture the current screen content
 # Usage: screen=$(tui_capture)
 tui_capture() {
-    tmux capture-pane -t "$TUI_SESSION" -p 2>/dev/null || echo ""
+    local output
+    if ! output=$(tmux capture-pane -t "$TUI_SESSION" -p 2>/dev/null); then
+        tui_fail "Failed to capture screen - tmux session may have died"
+    fi
+    echo "$output"
 }
 
 # Capture screen content including ANSI escape codes (for color testing)
 # Usage: screen=$(tui_capture_ansi)
 tui_capture_ansi() {
-    tmux capture-pane -t "$TUI_SESSION" -p -e 2>/dev/null || echo ""
+    local output
+    if ! output=$(tmux capture-pane -t "$TUI_SESSION" -p -e 2>/dev/null); then
+        tui_fail "Failed to capture screen (ANSI) - tmux session may have died"
+    fi
+    echo "$output"
 }
 
 # Get captured stderr content
@@ -794,9 +804,53 @@ tui_get_dimensions() {
 tui_resize() {
     local width="$1"
     local height="$2"
-    tmux resize-window -t "$TUI_SESSION" -x "$width" -y "$height" 2>/dev/null || true
+    if ! tmux resize-window -t "$TUI_SESSION" -x "$width" -y "$height" 2>/dev/null; then
+        tui_fail "Failed to resize to ${width}x${height} - tmux session may have died"
+    fi
     sleep "$TUI_RENDER_DELAY"
     tui_screenshot "after_resize_${width}x${height}"
+}
+
+# Count blank content lines immediately above the status bar junction (╠)
+# Usage: count=$(count_blank_content_lines_above_statusbar "$screen")
+# Fails explicitly if junction line is not found (test infrastructure error)
+count_blank_content_lines_above_statusbar() {
+    local screen="$1"
+    local blank_count=0
+
+    local -a lines
+    while IFS= read -r line; do
+        lines+=("$line")
+    done <<< "$screen"
+
+    local total=${#lines[@]}
+
+    # Find the junction line (╠) — status bar junction
+    local junction_idx=-1
+    for ((i=0; i<total; i++)); do
+        if [[ "${lines[$i]}" == *"╠"* ]]; then
+            junction_idx=$i
+            break
+        fi
+    done
+
+    if [ "$junction_idx" -le 0 ]; then
+        tui_fail "count_blank_content_lines_above_statusbar: junction line (╠) not found in screen output"
+    fi
+
+    # Walk upward from junction, counting blank content rows
+    for ((i=junction_idx-1; i>=1; i--)); do
+        local line="${lines[$i]}"
+        # Remove frame characters and whitespace
+        local content=$(echo "$line" | sed 's/[║│╔╗╚╝╠╣╤╧═]//g' | tr -d ' ')
+        if [ -z "$content" ]; then
+            ((blank_count++))
+        else
+            break
+        fi
+    done
+
+    echo "$blank_count"
 }
 
 # Get the exit code of the TUI process
@@ -832,17 +886,7 @@ tui_start_for_exit_code() {
 
     TUI_EXIT_CODE_FILE=$(mktemp)
 
-    # Kill any existing session
-    tmux kill-session -t "$TUI_SESSION" 2>/dev/null || true
-
-    # Create new session
-    if ! tmux new-session -d -s "$TUI_SESSION" -x "$width" -y "$height" 2>/dev/null; then
-        tui_fail "Failed to create tmux session for exit code capture"
-    fi
-
-    # Change to current directory
-    tmux send-keys -t "$TUI_SESSION" "cd $(pwd)" Enter
-    sleep 0.1
+    _tui_create_session "$width" "$height" "tui_start_for_exit_code"
 
     # Start guard TUI and capture exit code after it exits
     tmux send-keys -t "$TUI_SESSION" "$GUARD_BIN -i; echo \$? > $TUI_EXIT_CODE_FILE" Enter

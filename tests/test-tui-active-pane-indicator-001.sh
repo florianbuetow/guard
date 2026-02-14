@@ -18,15 +18,7 @@ source "$SCRIPT_DIR/helpers-tui.sh"
 set -e
 
 # Find guard binary
-GUARD_BIN=""
-if [ -f "./guard" ]; then
-    GUARD_BIN="$(pwd)/guard"
-elif command -v guard &> /dev/null; then
-    GUARD_BIN="guard"
-else
-    echo "Error: guard binary not found. Please build it first."
-    exit 1
-fi
+find_guard_binary
 
 # Check for tmux (required for TUI tests)
 if ! tui_check_tmux; then
@@ -44,7 +36,7 @@ test_active_pane_indicator() {
              "Selection highlight only appears in the focused pane"
 
     # Setup: Initialize guard, create files, collections
-    $GUARD_BIN init 000 flo staff
+    $GUARD_BIN init 000 "$(get_current_user)" "$(get_current_group)"
     touch file1.txt file2.txt
     $GUARD_BIN add file1.txt file2.txt
     $GUARD_BIN create alpha beta
@@ -97,5 +89,4 @@ test_active_pane_indicator() {
 }
 
 # Run test
-run_test test_active_pane_indicator
-print_test_summary 1
+tui_run_test test_active_pane_indicator

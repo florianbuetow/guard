@@ -10,15 +10,7 @@ source "$SCRIPT_DIR/helpers-cli.sh"
 set -e
 
 # Find guard binary
-GUARD_BIN=""
-if [ -f "./guard" ]; then
-    GUARD_BIN="$(pwd)/guard"
-elif command -v guard &> /dev/null; then
-    GUARD_BIN="guard"
-else
-    echo "Error: guard binary not found. Please build it first."
-    exit 1
-fi
+find_guard_binary
 
 # ============================================================================
 # TUTORIAL 1 COMPREHENSIVE TEST
@@ -31,8 +23,8 @@ test_tutorial1_complete_sequence() {
     echo "Step 1: Initialize guard system"
     echo "================================"
 
-    # Step 1: guard init 000 flo staff (adapted from root/wheel)
-    $GUARD_BIN init 000 flo staff
+    # Step 1: guard init 000 <user> <group> (adapted from root/wheel)
+    $GUARD_BIN init 000 "$(get_current_user)" "$(get_current_group)"
     local init_exit=$?
     assert_exit_code $init_exit 0 "Step 1: guard init should succeed"
 

@@ -8,16 +8,8 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/helpers-cli.sh"
 set -e
 
-# Find guard binary (use absolute path to work from temp directories)
-GUARD_BIN=""
-if [ -f "./guard" ]; then
-    GUARD_BIN="$(pwd)/guard"
-elif command -v guard &> /dev/null; then
-    GUARD_BIN="guard"
-else
-    echo "Error: guard binary not found. Please build it first."
-    exit 1
-fi
+# Find guard binary
+find_guard_binary
 
 # ============================================================================
 # SHOW COLLECTION COMMAND OUTPUT TESTS

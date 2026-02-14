@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-# run-cli-tests.sh - Run only CLI (non-TUI) tests sequentially with fail-fast behavior
+# run-cli-tests-sequential.sh - Run only CLI (non-TUI) tests sequentially with fail-fast behavior
 
 # Colors for output
 GREEN='\033[0;32m'

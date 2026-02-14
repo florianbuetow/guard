@@ -32,7 +32,7 @@ To add files to collections, use: guard update <collection> add <files>...`,
 				os.Exit(1)
 			}
 
-			addFiles(args)
+			addFiles(GetManager(cmd.Context()), args)
 		},
 	}
 
@@ -43,15 +43,7 @@ To add files to collections, use: guard update <collection> add <files>...`,
 }
 
 // addFiles is the shared implementation for adding files.
-func addFiles(args []string) {
-	mgr := manager.NewManager(".guardfile")
-
-	// Load registry
-	if err := mgr.LoadRegistry(); err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-		os.Exit(1)
-	}
-
+func addFiles(mgr *manager.Manager, args []string) {
 	// Count files already registered before adding
 	alreadyRegistered := 0
 	for _, path := range args {
@@ -115,7 +107,7 @@ To add files to collections, use: guard update <collection> add <files>...`,
 				os.Exit(1)
 			}
 
-			addFiles(args)
+			addFiles(GetManager(cmd.Context()), args)
 		},
 	}
 }

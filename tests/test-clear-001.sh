@@ -13,15 +13,7 @@ source "$SCRIPT_DIR/helpers-cli.sh"
 set -e
 
 # Find guard binary
-GUARD_BIN=""
-if [ -f "./guard" ]; then
-    GUARD_BIN="$(pwd)/guard"
-elif command -v guard &> /dev/null; then
-    GUARD_BIN="guard"
-else
-    echo "Error: guard binary not found. Please build it first."
-    exit 1
-fi
+find_guard_binary
 
 # ============================================================================
 # BASIC CLEAR TESTS
@@ -31,7 +23,7 @@ test_clear_single_collection_with_files() {
              "Positive test: Clear collection with files - disables guard, removes files from collection, keeps collection and files in registry"
 
     # Setup
-    $GUARD_BIN init 000 flo staff
+    $GUARD_BIN init 000 "$(get_current_user)" "$(get_current_group)"
     touch file1.txt file2.txt
     chmod 644 file1.txt file2.txt
     local initial_perms1=$(get_file_permissions "file1.txt")

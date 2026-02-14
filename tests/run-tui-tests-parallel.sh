@@ -34,14 +34,16 @@ if [ ! -f "./guard" ] && ! command -v guard &> /dev/null; then
     exit 1
 fi
 
-# Run CLI tests first — abort early if any fail
-echo -e "${BLUE}Running CLI tests first...${NC}"
-echo ""
-if ! "$SCRIPT_DIR/run-cli-tests-sequential.sh"; then
-    echo -e "${RED}CLI tests failed — skipping TUI tests${NC}"
-    exit 1
+# Run CLI tests first — abort early if any fail (skip if caller already ran them)
+if [ "${SKIP_CLI_PREREQ:-}" != "1" ]; then
+    echo -e "${BLUE}Running CLI tests first...${NC}"
+    echo ""
+    if ! "$SCRIPT_DIR/run-cli-tests-sequential.sh"; then
+        echo -e "${RED}CLI tests failed — skipping TUI tests${NC}"
+        exit 1
+    fi
+    echo ""
 fi
-echo ""
 
 # Check for tmux
 if ! command -v tmux &> /dev/null; then
@@ -87,6 +89,25 @@ declare -a TIMED_OUT
 # Track currently active test indices
 declare -a ACTIVE
 
+# Cleanup handler for runner interruption (Ctrl+C, CI timeout)
+cleanup_runner() {
+    echo ""
+    echo -e "${RED}Runner interrupted — cleaning up...${NC}"
+    for i in "${ACTIVE[@]}"; do
+        kill "${PIDS[$i]}" 2>/dev/null || true
+        tmux kill-session -t "guard_tui_test_${PIDS[$i]}" 2>/dev/null || true
+        rm -f "/tmp/_gt${PIDS[$i]}" 2>/dev/null || true
+    done
+    # Catch any sessions not tracked in ACTIVE (race condition)
+    tmux list-sessions 2>/dev/null | grep "guard_tui_test_" | cut -d: -f1 | while read -r s; do
+        tmux kill-session -t "$s" 2>/dev/null || true
+    done
+    # Keep logs for debugging on interrupt; only clean on successful completion
+    echo -e "Logs preserved at: ${LOG_DIR}"
+    exit 130
+}
+trap cleanup_runner INT TERM
+
 failed=0
 completed=0
 next_test=0
@@ -108,6 +129,16 @@ launch_test() {
     echo -e "  ${BLUE}Launching${NC} ${test_name}"
 }
 
+# Try to launch the next queued test if any remain
+try_launch_next() {
+    if [ $next_test -lt $test_count ]; then
+        launch_test $next_test
+        new_active+=("$next_test")
+        ((next_test++))
+        sleep 0.1
+    fi
+}
+
 # Launch initial batch
 while [ $next_test -lt $test_count ] && [ ${#ACTIVE[@]} -lt $CONCURRENCY ]; do
     launch_test $next_test
@@ -123,21 +154,17 @@ while [ $completed -lt $test_count ]; do
     for i in "${ACTIVE[@]}"; do
         elapsed_test=$((now - ${START_TIMES[$i]}))
         if [ $elapsed_test -gt $TEST_TIMEOUT ]; then
-            # Kill the hanging test and its children
+            # Kill the hanging test and its tmux session
             kill "${PIDS[$i]}" 2>/dev/null
             wait "${PIDS[$i]}" 2>/dev/null
+            tmux kill-session -t "guard_tui_test_${PIDS[$i]}" 2>/dev/null || true
+            rm -f "/tmp/_gt${PIDS[$i]}" 2>/dev/null || true
             EXIT_CODES[$i]=124
             TIMED_OUT[$i]=1
             echo -e "  ${RED}TIMEOUT${NC}    ${TEST_NAMES[$i]} (killed after ${TEST_TIMEOUT}s)"
             ((completed++))
             ((failed++))
-            # Launch next test if available
-            if [ $next_test -lt $test_count ]; then
-                launch_test $next_test
-                new_active+=("$next_test")
-                ((next_test++))
-                sleep 0.1
-            fi
+            try_launch_next
         elif ! kill -0 "${PIDS[$i]}" 2>/dev/null; then
             wait "${PIDS[$i]}"
             EXIT_CODES[$i]=$?
@@ -150,13 +177,7 @@ while [ $completed -lt $test_count ]; do
             if [ "${EXIT_CODES[$i]}" -ne 0 ]; then
                 ((failed++))
             fi
-            # Launch next test if available
-            if [ $next_test -lt $test_count ]; then
-                launch_test $next_test
-                new_active+=("$next_test")
-                ((next_test++))
-                sleep 0.1
-            fi
+            try_launch_next
         else
             new_active+=("$i")
         fi
@@ -222,6 +243,8 @@ if [ "$failed" -gt 0 ]; then
 fi
 echo -e "Time:   ${elapsed}s"
 echo -e "${BLUE}========================================${NC}"
+
+trap - INT TERM
 
 # Clean up log directory on success, keep on failure for inspection
 if [ "$failed" -eq 0 ]; then
