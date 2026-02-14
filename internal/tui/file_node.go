@@ -131,15 +131,18 @@ func collectExpansionState(node *FileNode, state map[string]bool) {
 	}
 }
 
-// restoreExpansionState recursively restores expansion state and populates children
+// restoreExpansionState recursively restores expansion state and populates children.
+// Errors from populateChildren leave the directory collapsed rather than silently empty.
 func restoreExpansionState(node *FileNode, state map[string]bool, mgr *manager.Manager) {
 	for _, child := range node.Children {
 		if child.IsDir {
 			if state[child.Path] {
+				if err := populateChildren(child, mgr); err != nil {
+					// Leave collapsed rather than showing an empty expanded dir
+					child.Expanded = false
+					continue
+				}
 				child.Expanded = true
-				// Populate this child's children
-				_ = populateChildren(child, mgr)
-				// Recursively restore expansion for grandchildren
 				restoreExpansionState(child, state, mgr)
 			}
 		}

@@ -180,7 +180,7 @@ func renderBottomBorder(totalWidth int) string {
 }
 
 // padContentToFit takes raw rendered content and returns exactly height lines,
-// each exactly width characters wide. Used by panel ContentLines() methods.
+// each exactly width display columns wide. Used by panel ContentLines() methods.
 func padContentToFit(content string, width, height int) []string {
 	if width < 1 {
 		width = 1

@@ -3,7 +3,6 @@ package tui
 import (
 	"fmt"
 
-	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 
 	"github.com/florianbuetow/guard/internal/manager"
@@ -98,20 +97,23 @@ func (a App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		// Global key bindings
 		switch {
-		case matchAppKey(msg, a.keys.Quit):
+		case matchKey(msg, a.keys.Quit):
 			a.quitting = true
 			return a, tea.Quit
 
-		case matchAppKey(msg, a.keys.SwitchPanel):
+		case matchKey(msg, a.keys.SwitchPanel):
 			a.switchPanel()
 			return a, nil
 
-		case matchAppKey(msg, a.keys.Refresh):
+		case matchKey(msg, a.keys.Refresh):
 			a.refresh()
-			refreshMsg := RefreshMsg{}
-			a.filesPanel, _ = a.filesPanel.Update(refreshMsg)
-			a.collectionsPanel, _ = a.collectionsPanel.Update(refreshMsg)
-			a.statusBar, _ = a.statusBar.Update(refreshMsg)
+			// Only forward refresh to panels if registry loaded successfully
+			if !a.errorModal.IsVisible() {
+				refreshMsg := RefreshMsg{}
+				a.filesPanel, _ = a.filesPanel.Update(refreshMsg)
+				a.collectionsPanel, _ = a.collectionsPanel.Update(refreshMsg)
+				a.statusBar, _ = a.statusBar.Update(refreshMsg)
+			}
 			return a, nil
 		}
 
@@ -258,14 +260,4 @@ func (a *App) updateLayout() {
 	a.collectionsPanel.SetSize(a.width-panelWidth, panelHeight)
 	a.statusBar.SetWidth(a.width)
 	a.errorModal.SetSize(a.width, a.height)
-}
-
-// matchAppKey checks if a key message matches a key binding
-func matchAppKey(msg tea.KeyMsg, binding key.Binding) bool {
-	for _, k := range binding.Keys() {
-		if msg.String() == k {
-			return true
-		}
-	}
-	return false
 }
