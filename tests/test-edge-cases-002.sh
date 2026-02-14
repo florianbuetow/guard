@@ -10,15 +10,7 @@ set -e
 
 
 # Find guard binary
-GUARD_BIN=""
-if [ -f "./guard" ]; then
-    GUARD_BIN="$(pwd)/guard"
-elif command -v guard &> /dev/null; then
-    GUARD_BIN="guard"
-else
-    echo "Error: guard binary not found. Please build it first."
-    exit 1
-fi
+find_guard_binary
 
 # ============================================================================
 # SPECIAL SCENARIOS
@@ -28,7 +20,7 @@ test_file_in_multiple_collections() {
              "Files can be in multiple collections with different guard states"
 
     # Setup
-    $GUARD_BIN init 000 flo staff
+    $GUARD_BIN init 000 "$(get_current_user)" "$(get_current_group)"
     touch file1.txt
     # OLD: $GUARD_BIN add file file1.txt to coll1 coll2
     # NEW:

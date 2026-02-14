@@ -27,15 +27,7 @@ source "$SCRIPT_DIR/helpers-cli.sh"
 set -e
 
 # Find guard binary
-GUARD_BIN=""
-if [ -f "./guard" ]; then
-    GUARD_BIN="$(pwd)/guard"
-elif command -v guard &> /dev/null; then
-    GUARD_BIN="guard"
-else
-    echo "Error: guard binary not found. Please build it first."
-    exit 1
-fi
+find_guard_binary
 
 # ============================================================================
 # ENABLE COMMAND HELP (Tutorial 2: guard enable collection alice)

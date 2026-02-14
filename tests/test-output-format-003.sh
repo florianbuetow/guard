@@ -10,15 +10,7 @@ source "$SCRIPT_DIR/helpers-cli.sh"
 set -e
 
 # Find guard binary
-GUARD_BIN=""
-if [ -f "./guard" ]; then
-    GUARD_BIN="$(pwd)/guard"
-elif command -v guard &> /dev/null; then
-    GUARD_BIN="guard"
-else
-    echo "Error: guard binary not found. Please build it first."
-    exit 1
-fi
+find_guard_binary
 
 # ============================================================================
 # DISABLE OUTPUT FORMAT TESTS
@@ -27,7 +19,7 @@ test_disable_output_format_single_file() {
     log_test "test_disable_output_format_single_file" \
              "Disable shows count format 'Guard disabled for N file(s)'"
 
-    $GUARD_BIN init 000 flo staff
+    $GUARD_BIN init 000 "$(get_current_user)" "$(get_current_group)"
     touch myfile.txt
     $GUARD_BIN enable file myfile.txt >/dev/null 2>&1
 

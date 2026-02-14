@@ -10,15 +10,7 @@ source "$SCRIPT_DIR/helpers-cli.sh"
 set -e
 
 # Find guard binary
-GUARD_BIN=""
-if [ -f "./guard" ]; then
-    GUARD_BIN="$(pwd)/guard"
-elif command -v guard &> /dev/null; then
-    GUARD_BIN="guard"
-else
-    echo "Error: guard binary not found. Please build it first."
-    exit 1
-fi
+find_guard_binary
 
 # ============================================================================
 # REMOVE FILE TESTS (optional 'file' keyword)
@@ -28,7 +20,7 @@ test_remove_positive() {
              "Positive test: Remove registered file and restore permissions without 'file' keyword"
 
     # Setup
-    $GUARD_BIN init 000 flo staff
+    $GUARD_BIN init 000 "$(get_current_user)" "$(get_current_group)"
     touch test.txt
     local initial_perms=$(get_file_permissions "test.txt")
 

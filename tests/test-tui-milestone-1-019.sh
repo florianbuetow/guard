@@ -17,15 +17,7 @@ source "$SCRIPT_DIR/helpers-tui.sh"
 set -e
 
 # Find guard binary
-GUARD_BIN=""
-if [ -f "./guard" ]; then
-    GUARD_BIN="$(pwd)/guard"
-elif command -v guard &> /dev/null; then
-    GUARD_BIN="guard"
-else
-    echo "Error: guard binary not found. Please build it first."
-    exit 1
-fi
+find_guard_binary
 
 # Check for tmux (required for TUI tests)
 if ! tui_check_tmux; then
@@ -40,7 +32,7 @@ test_terminal_resize_redraws() {
              "Application redraws when terminal is resized (Spec lines 126-129)"
 
     # Setup
-    $GUARD_BIN init 000 flo staff
+    $GUARD_BIN init 000 "$(get_current_user)" "$(get_current_group)"
     touch testfile.txt
     $GUARD_BIN create testcoll
     $GUARD_BIN update testcoll add testfile.txt
@@ -69,5 +61,4 @@ test_terminal_resize_redraws() {
 }
 
 # Run test
-run_test test_terminal_resize_redraws
-print_test_summary 1
+tui_run_test test_terminal_resize_redraws

@@ -10,15 +10,7 @@ source "$SCRIPT_DIR/helpers-cli.sh"
 set -e
 
 # Find guard binary
-GUARD_BIN=""
-if [ -f "./guard" ]; then
-    GUARD_BIN="$(pwd)/guard"
-elif command -v guard &> /dev/null; then
-    GUARD_BIN="guard"
-else
-    echo "Error: guard binary not found. Please build it first."
-    exit 1
-fi
+find_guard_binary
 
 # ============================================================================
 # ENABLE AUTO-DETECTION TESTS - EXPLICIT KEYWORD OVERRIDE
@@ -28,7 +20,7 @@ test_enable_explicit_file_keyword() {
              "Explicit 'file' keyword overrides auto-detection"
 
     # Setup
-    $GUARD_BIN init 000 flo staff
+    $GUARD_BIN init 000 "$(get_current_user)" "$(get_current_group)"
     touch foo
     $GUARD_BIN add file foo
     $GUARD_BIN create foo  # Same name - would be ambiguous

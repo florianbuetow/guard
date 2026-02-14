@@ -10,15 +10,7 @@ set -e
 
 
 # Find guard binary
-GUARD_BIN=""
-if [ -f "./guard" ]; then
-    GUARD_BIN="$(pwd)/guard"
-elif command -v guard &> /dev/null; then
-    GUARD_BIN="guard"
-else
-    echo "Error: guard binary not found. Please build it first."
-    exit 1
-fi
+find_guard_binary
 
 # ============================================================================
 # RESET TESTS
@@ -28,7 +20,7 @@ test_reset_disables_all_guards() {
              "Reset should disable guard for all files and collections"
 
     # Setup
-    $GUARD_BIN init 000 flo staff
+    $GUARD_BIN init 000 "$(get_current_user)" "$(get_current_group)"
     touch file1.txt file2.txt
     local initial_perms1=$(get_file_permissions "file1.txt")
     local initial_perms2=$(get_file_permissions "file2.txt")

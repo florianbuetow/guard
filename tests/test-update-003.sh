@@ -10,15 +10,7 @@ source "$SCRIPT_DIR/helpers-cli.sh"
 set -e
 
 # Find guard binary
-GUARD_BIN=""
-if [ -f "./guard" ]; then
-    GUARD_BIN="$(pwd)/guard"
-elif command -v guard &> /dev/null; then
-    GUARD_BIN="guard"
-else
-    echo "Error: guard binary not found. Please build it first."
-    exit 1
-fi
+find_guard_binary
 
 # ============================================================================
 # UPDATE ADD OUTPUT COUNT TESTS (Bug fix: show delta, not cumulative)
@@ -28,7 +20,7 @@ test_update_add_single_file_output_count() {
              "Add single file should show 'Added 1 file(s)', not cumulative total"
 
     # Setup
-    $GUARD_BIN init 000 flo staff
+    $GUARD_BIN init 000 "$(get_current_user)" "$(get_current_group)"
     touch file1.txt
     $GUARD_BIN create mycoll
 

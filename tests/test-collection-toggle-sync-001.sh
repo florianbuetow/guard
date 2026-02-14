@@ -15,15 +15,7 @@ source "$SCRIPT_DIR/helpers-cli.sh"
 set -e
 
 # Find guard binary
-GUARD_BIN=""
-if [ -f "./guard" ]; then
-    GUARD_BIN="$(pwd)/guard"
-elif command -v guard &> /dev/null; then
-    GUARD_BIN="guard"
-else
-    echo "Error: guard binary not found. Please build it first."
-    exit 1
-fi
+find_guard_binary
 
 # ============================================================================
 # COLLECTION TOGGLE SYNC TESTS
@@ -33,7 +25,7 @@ test_toggle_collection_mixed_states_syncs_files() {
              "When toggling a collection with mixed file states, all files sync to collection's new guard state"
 
     # Setup: Initialize guard
-    $GUARD_BIN init 000 flo staff
+    $GUARD_BIN init 000 "$(get_current_user)" "$(get_current_group)"
 
     # Create 3 test files
     touch file1.txt file2.txt file3.txt

@@ -8,15 +8,7 @@ source "$SCRIPT_DIR/helpers-cli.sh"
 set -e
 
 # Find guard binary
-GUARD_BIN=""
-if [ -f "./guard" ]; then
-    GUARD_BIN="$(pwd)/guard"
-elif command -v guard &> /dev/null; then
-    GUARD_BIN="guard"
-else
-    echo "Error: guard binary not found. Please build it first."
-    exit 1
-fi
+find_guard_binary
 
 # ============================================================================
 # WARNING MESSAGE FORMAT TESTS
@@ -25,7 +17,7 @@ test_warning_empty_folder() {
     log_test "test_warning_empty_folder" \
              "Warning message format: Empty folder"
 
-    $GUARD_BIN init 000 flo staff
+    $GUARD_BIN init 000 "$(get_current_user)" "$(get_current_group)"
     mkdir -p emptydir
 
     output=$($GUARD_BIN toggle folder emptydir 2>&1)

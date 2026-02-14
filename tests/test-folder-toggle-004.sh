@@ -12,15 +12,7 @@ source "$SCRIPT_DIR/helpers-cli.sh"
 set -e
 
 # Find guard binary
-GUARD_BIN=""
-if [ -f "./guard" ]; then
-    GUARD_BIN="$(pwd)/guard"
-elif command -v guard &> /dev/null; then
-    GUARD_BIN="guard"
-else
-    echo "Error: guard binary not found. Please build it first."
-    exit 1
-fi
+find_guard_binary
 
 # ============================================================================
 # FOLDER DISABLE TESTS
@@ -30,7 +22,7 @@ test_disable_folder_creates_entry() {
              "Disable folder creates entry and unguards all files"
 
     # Setup: Initialize guard
-    $GUARD_BIN init 000 flo staff
+    $GUARD_BIN init 000 "$(get_current_user)" "$(get_current_group)"
 
     # Create folder with 2 files
     mkdir -p myfolder

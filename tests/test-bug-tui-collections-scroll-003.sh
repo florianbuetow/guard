@@ -1,12 +1,10 @@
 #!/bin/bash
 
-# test-bug-tui-collections-scroll-003.sh - BUG: Collections pane viewport too small
+# test-bug-tui-collections-scroll-003.sh - REGRESSION: Collections pane viewport sizing
 #
-# The CollectionTree.SetSize() subtracts 4 from height for its scroll viewport
-# (height-4), but the panel's ContentLines() renders (height) lines of content.
-# This 4-line mismatch means:
-#   - At small heights the viewport goes to zero/negative → nothing displays
-#   - At any height, 4 content lines are wasted as blank padding
+# Regression test for a fixed bug where CollectionTree.SetSize() subtracted 4
+# from height for its scroll viewport (height-4), but ContentLines() rendered
+# (height) lines — causing blank padding and zero-height viewports at small sizes.
 #
 # This test creates a nested collection hierarchy and verifies that scrolling
 # through all collections works correctly when the content area is only 1 line
@@ -33,15 +31,7 @@ source "$SCRIPT_DIR/helpers-tui.sh"
 set -e
 
 # Find guard binary
-GUARD_BIN=""
-if [ -f "./guard" ]; then
-    GUARD_BIN="$(pwd)/guard"
-elif command -v guard &> /dev/null; then
-    GUARD_BIN="guard"
-else
-    echo "Error: guard binary not found. Please build it first."
-    exit 1
-fi
+find_guard_binary
 
 # Check for tmux (required for TUI tests)
 if ! tui_check_tmux; then

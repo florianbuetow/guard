@@ -34,7 +34,7 @@ if ! command -v tmux &> /dev/null; then
     exit 1
 fi
 
-# Discover TUI test files (same logic as run-all-tests.sh)
+# Discover TUI test files
 TEST_FILES=$(find "$SCRIPT_DIR" -maxdepth 1 -name "test-*.sh" -type f | sort)
 TEST_FILES=$(echo "$TEST_FILES" | grep -v "test-assertions-and-framework.sh" | grep -v "test-guardfile-parsers.sh")
 TUI_TEST_FILES=$(echo "$TEST_FILES" | grep -i '/[^/]*tui[^/]*$' || true)

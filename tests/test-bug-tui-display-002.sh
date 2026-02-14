@@ -21,15 +21,7 @@ source "$SCRIPT_DIR/helpers-cli.sh"
 set -e
 
 # Find guard binary
-GUARD_BIN=""
-if [ -f "./guard" ]; then
-    GUARD_BIN="$(pwd)/guard"
-elif command -v guard &> /dev/null; then
-    GUARD_BIN="guard"
-else
-    echo "Error: guard binary not found. Please build it first."
-    exit 1
-fi
+find_guard_binary
 
 # Check for required tools
 check_tui_test_requirements() {
@@ -101,7 +93,7 @@ test_toggle_file_preserves_folder_expansion_state() {
              "BUG #2: Toggling guard on file should NOT collapse its parent folder"
 
     # Setup
-    $GUARD_BIN init 000 flo staff
+    $GUARD_BIN init 000 "$(get_current_user)" "$(get_current_group)"
 
     # Create folder structure like the bug report: registry/registry.go
     mkdir -p registry

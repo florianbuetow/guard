@@ -10,15 +10,7 @@ source "$SCRIPT_DIR/helpers-cli.sh"
 set -e
 
 # Find guard binary
-GUARD_BIN=""
-if [ -f "./guard" ]; then
-    GUARD_BIN="$(pwd)/guard"
-elif command -v guard &> /dev/null; then
-    GUARD_BIN="guard"
-else
-    echo "Error: guard binary not found. Please build it first."
-    exit 1
-fi
+find_guard_binary
 
 # ============================================================================
 # WARNING FOLLOW-UP MESSAGE TESTS
@@ -27,7 +19,7 @@ test_warning_followup_message() {
     log_test "test_warning_followup_message" \
              "Warning lists missing files followed by 'Guard status unchanged'"
 
-    $GUARD_BIN init 000 flo staff
+    $GUARD_BIN init 000 "$(get_current_user)" "$(get_current_group)"
     touch tempfile.txt
     $GUARD_BIN add tempfile.txt
     rm tempfile.txt  # Remove from disk but keep in registry

@@ -9,16 +9,8 @@ source "$SCRIPT_DIR/helpers-cli.sh"
 set -e
 
 
-# Find guard binary (use absolute path to work from temp directories)
-GUARD_BIN=""
-if [ -f "./guard" ]; then
-    GUARD_BIN="$(pwd)/guard"
-elif command -v guard &> /dev/null; then
-    GUARD_BIN="guard"
-else
-    echo "Error: guard binary not found. Please build it first."
-    exit 1
-fi
+# Find guard binary
+find_guard_binary
 
 # ============================================================================
 # REMOVE FILE OUTPUT TESTS (edge cases only)
@@ -28,7 +20,7 @@ test_output_no_message_when_file_not_in_collection() {
              "Verify NO 'Removed' message when file not in collection"
 
     # Setup
-    $GUARD_BIN init 000 flo staff
+    $GUARD_BIN init 000 "$(get_current_user)" "$(get_current_group)"
     touch file1.txt other.txt
     # OLD: $GUARD_BIN add file file1.txt to alice > /dev/null 2>&1
     # OLD: $GUARD_BIN add file other.txt > /dev/null 2>&1

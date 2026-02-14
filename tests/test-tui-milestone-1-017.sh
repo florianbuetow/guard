@@ -17,15 +17,7 @@ source "$SCRIPT_DIR/helpers-tui.sh"
 set -e
 
 # Find guard binary
-GUARD_BIN=""
-if [ -f "./guard" ]; then
-    GUARD_BIN="$(pwd)/guard"
-elif command -v guard &> /dev/null; then
-    GUARD_BIN="guard"
-else
-    echo "Error: guard binary not found. Please build it first."
-    exit 1
-fi
+find_guard_binary
 
 # Check for tmux (required for TUI tests)
 if ! tui_check_tmux; then
@@ -43,7 +35,7 @@ test_error_modal_permission_denied() {
     # The setup and assertions may need adjustment based on actual implementation
 
     # Setup
-    $GUARD_BIN init 000 flo staff
+    $GUARD_BIN init 000 "$(get_current_user)" "$(get_current_group)"
     touch testfile.txt
     $GUARD_BIN add file testfile.txt
 
@@ -68,5 +60,4 @@ test_error_modal_permission_denied() {
 }
 
 # Run test
-run_test test_error_modal_permission_denied
-print_test_summary 1
+tui_run_test test_error_modal_permission_denied

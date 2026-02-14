@@ -10,15 +10,7 @@ source "$SCRIPT_DIR/helpers-cli.sh"
 set -e
 
 # Find guard binary
-GUARD_BIN=""
-if [ -f "./guard" ]; then
-    GUARD_BIN="$(pwd)/guard"
-elif command -v guard &> /dev/null; then
-    GUARD_BIN="guard"
-else
-    echo "Error: guard binary not found. Please build it first."
-    exit 1
-fi
+find_guard_binary
 
 # ============================================================================
 # DISABLE FOLDER/COLLECTION OUTPUT TESTS
@@ -27,7 +19,7 @@ test_disable_output_format_folder() {
     log_test "test_disable_output_format_folder" \
              "Disable folder shows 'Guard disabled for N folder(s)'"
 
-    $GUARD_BIN init 000 flo staff
+    $GUARD_BIN init 000 "$(get_current_user)" "$(get_current_group)"
     mkdir -p mydir
     touch mydir/file.txt
     $GUARD_BIN enable folder mydir >/dev/null 2>&1

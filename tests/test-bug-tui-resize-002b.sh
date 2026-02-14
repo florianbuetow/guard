@@ -12,62 +12,12 @@ source "$SCRIPT_DIR/helpers-tui.sh"
 set -e
 
 # Find guard binary
-GUARD_BIN=""
-if [ -f "./guard" ]; then
-    GUARD_BIN="$(pwd)/guard"
-elif command -v guard &> /dev/null; then
-    GUARD_BIN="guard"
-else
-    echo "Error: guard binary not found. Please build it first."
-    exit 1
-fi
+find_guard_binary
 
 # Check for tmux (required for TUI tests)
 if ! tui_check_tmux; then
     exit 1
 fi
-
-# ==========================================================================
-# Helper: count blank content lines immediately above the status bar junction
-# ==========================================================================
-count_blank_content_lines_above_statusbar() {
-    local screen="$1"
-    local blank_count=0
-
-    local -a lines
-    while IFS= read -r line; do
-        lines+=("$line")
-    done <<< "$screen"
-
-    local total=${#lines[@]}
-
-    # Find the junction line (╠)
-    local junction_idx=-1
-    for ((i=0; i<total; i++)); do
-        if [[ "${lines[$i]}" == *"╠"* ]]; then
-            junction_idx=$i
-            break
-        fi
-    done
-
-    if [ "$junction_idx" -le 0 ]; then
-        echo "0"
-        return
-    fi
-
-    # Walk upward from junction, counting blank content rows
-    for ((i=junction_idx-1; i>=1; i--)); do
-        local line="${lines[$i]}"
-        local content=$(echo "$line" | sed 's/[║│╔╗╚╝╠╣╤╧═]//g' | tr -d ' ')
-        if [ -z "$content" ]; then
-            ((blank_count++))
-        else
-            break
-        fi
-    done
-
-    echo "$blank_count"
-}
 
 # ==========================================================================
 # Test: Expanded folder — resize down in steps of 1
