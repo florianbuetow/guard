@@ -52,7 +52,7 @@ If you're on Windows, consider using:
 
 ## Critical Security Requirement for AI Development
 
-**⚠️ IMPORTANT**: When using Guard with AI coding agents (Claude, Cursor, GitHub Copilot, etc.), the user account running the AI coding agent **MUST NOT** have sudo privileges or at the very least using sudo must require entering a password.
+**IMPORTANT**: When using Guard with AI coding agents (Claude, Cursor, GitHub Copilot, etc.), the user account running the AI coding agent **MUST NOT** have sudo privileges or at the very least using sudo must require entering a password.
 
 This is essential because:
 - Guard uses `sudo` to change file ownership and permissions to protect files
@@ -354,7 +354,7 @@ Guard is built and maintained by AI agents guided by human constraints. Rather t
 
 ## Bug Reports
 
-Found a bug? Open a [bug report](https://github.com/florianbuetow/guard/issues/new) with a **clear reproduction**. The best bug reports include one or both of the following:
+Found a bug? Open a [bug report](https://github.com/florianbuetow/guard/issues/new) with steps to reproduce. The best bug reports include one or both of the following:
 
 ### Option A: Shell test to reproduce
 
