@@ -28,11 +28,8 @@ func CalculateScrollOffset(cursor, totalItems, viewportHeight int) int {
 		return 0
 	}
 
-	// Keep the cursor at least scrollMargin lines from the top/bottom when possible
-	scrollMargin := viewportHeight / 4
-
-	// Calculate minimum offset to keep cursor visible with margin
-	minOffset := cursor - viewportHeight + scrollMargin + 1
+	// Scroll only when cursor reaches the viewport edge (no margin)
+	minOffset := cursor - viewportHeight + 1
 	if minOffset < 0 {
 		minOffset = 0
 	}
