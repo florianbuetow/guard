@@ -384,7 +384,7 @@ cleanup_test_env
 
 ### Option B: TUI screenshot (copy & paste)
 
-If the bug is in the interactive TUI, copy-paste the terminal output showing the issue:
+If the bug is in the interactive TUI, copy-paste the terminal output showing the issue and add a textual description of the bug:
 
 ```
 ┌─ Files ──────────────────────────┐┌─ Details ─────────────────────────┐
