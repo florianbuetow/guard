@@ -16,7 +16,7 @@ This repository does not currently use release tags, so entries are grouped by d
 
 ### Added
 
-- Added `find_guard_binary` helper to `helpers-cli.sh` for consistent guard binary resolution across all test files.
+- Added `find_guard_binary` helper to `helpers-cli.sh` for consistent guard binary resolution across all test files. Also adds `./bin/guard` as a search path (matching the `just build` output directory), which was not present in the original per-test boilerplate.
 - Added `padContentToFit` utility to `frame.go` for reusable panel content padding.
 - Added Go unit tests for `CalculateScrollOffset`, `CalculateVisibleRange`, and `ScrollState` in `scroll_test.go`.
 

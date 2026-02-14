@@ -140,14 +140,18 @@ func TestScrollState(t *testing.T) {
 	t.Run("SetViewportSize recalculates", func(t *testing.T) {
 		s := NewScrollState(10)
 		s.Update(15, 20)
-		offsetBefore := s.Offset
+		// viewport=10: margin=2, minOffset=15-10+2+1=8, offset=8
+		if s.Offset != 8 {
+			t.Errorf("Offset before resize = %d, want 8", s.Offset)
+		}
 
 		s.SetViewportSize(5)
 		if s.ViewportSize != 5 {
 			t.Errorf("ViewportSize = %d, want 5", s.ViewportSize)
 		}
-		if s.Offset == offsetBefore {
-			t.Error("expected offset to change after SetViewportSize")
+		// viewport=5: margin=1, minOffset=15-5+1+1=12, offset=12
+		if s.Offset != 12 {
+			t.Errorf("Offset after resize = %d, want 12", s.Offset)
 		}
 	})
 
