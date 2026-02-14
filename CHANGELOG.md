@@ -7,9 +7,18 @@ This repository does not currently use release tags, so entries are grouped by d
 
 ## [Unreleased]
 
+### Changed
+
+- Replaced `matchKeyBinding` with the existing `matchKey` helper in `CollectionTree`, removing a redundant function and an unused import.
+- Extracted `padContentToFit()` helper in `frame.go`, deduplicating ~17 lines of identical padding logic from `FilesPanel.ContentLines()` and `CollectionsPanel.ContentLines()`.
+- Replaced 10-line guard-binary lookup boilerplate across 199 test files with a shared `find_guard_binary` function in `helpers-cli.sh`.
+- Moved duplicate `count_blank_content_lines_above_statusbar` out of three resize test files into `helpers-tui.sh`.
+
 ### Added
 
-- No unreleased changes yet.
+- Added `find_guard_binary` helper to `helpers-cli.sh` for consistent guard binary resolution across all test files.
+- Added `padContentToFit` utility to `frame.go` for reusable panel content padding.
+- Added Go unit tests for `CalculateScrollOffset`, `CalculateVisibleRange`, and `ScrollState` in `scroll_test.go`.
 
 ## [2026-02-13]
 
