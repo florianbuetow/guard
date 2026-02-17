@@ -21,19 +21,19 @@ Guard provides you the ability to toggle the `guard` of individual `files`, defi
 ### Interactive Mode with Fuzzy Search
 
 ```
-╔═ Files ════════════════════════════════╤═ Collections ══════════════════════╗
-║ ▼ src                                  │ [G] core-modules                   ║
-║ │ ├─ [G] main.go                       │ [-] test-fixtures                  ║
-║ │ └─ [G] config.go                     │                                    ║
-║ ▶ docs                                 │                                    ║
-║   [-] README.md                        │                                    ║
-║   [ ] notes.txt                        │                                    ║
-╠════════════════════════════════════════╧════════════════════════════════════╣
-║  Search: main                                                              ║
-╠════════════════════════════════════════════════════════════════════════════╣
-║ ↑↓:Navigate  ←→:Expand/Collapse  Space:Toggle  Tab:Switch  /:Search       ║
-║ R:Refresh  Q:Quit                                                          ║
-╚════════════════════════════════════════════════════════════════════════════╝
+╔═ Files ════════════════════════════════╤═ Collections ════════════════╗
+║ ▼ src                                  │ [G] core-modules             ║
+║ │ ├─ [G] main.go                       │ [-] test-fixtures            ║
+║ │ └─ [G] config.go                     │                              ║
+║ ▶ docs                                 │                              ║
+║   [-] README.md                        │                              ║
+║   [ ] notes.txt                        │                              ║
+╠════════════════════════════════════════╧══════════════════════════════╣
+║  Search: main                                                         ║
+╠═══════════════════════════════════════════════════════════════════════╣
+║ ↑↓:Navigate  ←→:Expand/Collapse  Space:Toggle  Tab:Switch  /:Search   ║
+║ R:Refresh  Q:Quit                                                     ║
+╚═══════════════════════════════════════════════════════════════════════╝
 ```
 
 Press `/` to activate fuzzy search and instantly filter the file tree. Press `Esc` to clear and close the search box. Use `Tab` to cycle focus between panels and the search box.
