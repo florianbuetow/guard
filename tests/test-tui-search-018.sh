@@ -2,7 +2,6 @@
 
 # test-tui-search-018.sh - BUG: Cursor blinks in search box when panel has focus
 # Tests that the search box textinput is blurred when focus moves to a panel.
-# TDD: This test should FAIL until the cursor blink bug is fixed.
 
 # Source helpers
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

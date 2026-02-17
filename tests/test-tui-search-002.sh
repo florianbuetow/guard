@@ -2,7 +2,6 @@
 
 # test-tui-search-002.sh - FUZZY SEARCH: Real-time filtering
 # Tests that typing in the search box filters the file tree in real time.
-# TDD: This test should FAIL until the search feature is implemented.
 #
 # Prerequisites:
 # - tmux must be installed

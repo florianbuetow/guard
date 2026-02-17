@@ -2,7 +2,6 @@
 
 # test-tui-search-013.sh - ESC DOES NOT QUIT: Pressing Escape does not quit the TUI
 # Tests that pressing Escape does not quit the TUI when search is not active.
-# TDD: This test should FAIL until ESC is removed from quit bindings.
 
 # Source helpers
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

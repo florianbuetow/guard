@@ -1,8 +1,7 @@
 #!/bin/bash
 
 # test-tui-search-004.sh - FUZZY SEARCH: Enter keeps filter active
-# Tests that Enter deactivates the search box but keeps the filter applied.
-# TDD: This test should FAIL until the search feature is implemented.
+# Tests that the filter remains applied after pressing Enter.
 #
 # Prerequisites:
 # - tmux must be installed
@@ -35,7 +34,7 @@ fi
 # ============================================================================
 test_search_enter_keeps_filter() {
     log_test "test_search_enter_keeps_filter" \
-             "Enter deactivates the search box but keeps the filter applied"
+             "Filter remains applied after pressing Enter"
 
     # Setup: Initialize guard and create flat files
     $GUARD_BIN init 000 flo staff

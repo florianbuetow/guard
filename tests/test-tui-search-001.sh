@@ -2,7 +2,6 @@
 
 # test-tui-search-001.sh - FUZZY SEARCH: Activation
 # Tests that pressing '/' activates the search box in the TUI.
-# TDD: This test should FAIL until the search feature is implemented.
 #
 # Prerequisites:
 # - tmux must be installed

@@ -2,7 +2,6 @@
 
 # test-tui-search-020.sh - BUG: Panel titles should not have bullet prefixes
 # Tests that panel titles use highlight styling instead of ● / ○ bullet characters.
-# TDD: This test should FAIL until bullets are removed and styling is applied.
 
 # Source helpers
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

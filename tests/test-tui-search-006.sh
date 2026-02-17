@@ -2,7 +2,6 @@
 
 # test-tui-search-006.sh - FUZZY SEARCH: Filter persists across panel switches
 # Tests that the search filter persists when switching to collections and back.
-# TDD: This test should FAIL until the search feature is implemented.
 #
 # Prerequisites:
 # - tmux must be installed

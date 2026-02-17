@@ -2,7 +2,6 @@
 
 # test-tui-search-003.sh - FUZZY SEARCH: Escape clears and restores
 # Tests that Escape clears the search query and restores the full file tree.
-# TDD: This test should FAIL until the search feature is implemented.
 #
 # Prerequisites:
 # - tmux must be installed
