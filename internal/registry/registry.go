@@ -864,6 +864,20 @@ func (r *Registry) SetDefaultFileGroup(group string) {
 	r.config.GuardGroup = strings.TrimSpace(group)
 }
 
+// GetUseGitignore returns whether .gitignore rules are enabled.
+func (r *Registry) GetUseGitignore() bool {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	return r.config.GetUseGitignore()
+}
+
+// GetUseGuardignore returns whether .guardignore rules are enabled.
+func (r *Registry) GetUseGuardignore() bool {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	return r.config.GetUseGuardignore()
+}
+
 // GetLastToggle returns the last toggled item (name, type) or empty strings if none
 func (r *Registry) GetLastToggle() (name string, toggleType string) {
 	r.mu.RLock()

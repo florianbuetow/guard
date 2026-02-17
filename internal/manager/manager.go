@@ -4,17 +4,19 @@ import (
 	"fmt"
 
 	"github.com/florianbuetow/guard/internal/filesystem"
+	"github.com/florianbuetow/guard/internal/guardignore"
 	"github.com/florianbuetow/guard/internal/security"
 )
 
 // Manager orchestrates operations between the Security (Registry) and Filesystem layers.
 // It implements business logic, idempotency, warning aggregation, and multi-step operations.
 type Manager struct {
-	registryPath string
-	security     *security.Security
-	fs           *filesystem.FileSystem
-	warnings     []Warning
-	errors       []string
+	registryPath  string
+	security      *security.Security
+	fs            *filesystem.FileSystem
+	ignoreMatcher *guardignore.IgnoreMatcher
+	warnings      []Warning
+	errors        []string
 }
 
 // NewManager creates a new Manager instance with the specified registry path.
@@ -42,6 +44,7 @@ func (m *Manager) LoadRegistry() error {
 	}
 
 	m.security = sec
+	m.initIgnoreMatcher()
 	return nil
 }
 
@@ -105,6 +108,7 @@ func (m *Manager) InitializeRegistry(mode, owner, group string, overwrite bool) 
 	}
 
 	m.security = sec
+	m.initIgnoreMatcher()
 	return nil
 }
 
