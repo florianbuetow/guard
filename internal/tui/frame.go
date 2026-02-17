@@ -34,8 +34,8 @@ const (
 // ║                                        │                                    ║
 // ║ ...content...                          │ ...content...                      ║
 // ╠════════════════════════════════════════╧════════════════════════════════════╣
-// ║ ↑↓: Navigate  ←→: Collapse/Expand  Tab: Switch Panel  Space: Toggle Guard   ║
-// ║ R: Refresh  Q/Esc: Quit                                                     ║
+// ║ ↑↓: Navigate  ←→: Expand/Collapse  Space: Toggle  Tab: Switch Panel  /: Search  R: Refresh  Q: Quit ║
+// ║                                                                                                      ║
 // ╚═════════════════════════════════════════════════════════════════════════════╝
 //
 // Frame structure (with search active):

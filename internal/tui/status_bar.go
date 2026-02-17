@@ -124,11 +124,9 @@ func (s StatusBar) RenderHelp() string {
 
 // ContentLines returns the status bar content as lines for the frame
 func (s StatusBar) ContentLines() []string {
-	// Build help text based on the spec format
-	// ↑↓: Navigate  ←→: Collapse/Expand  Tab: Switch Panel  Space: Toggle Guard
-	// R: Refresh  Q/Esc: Quit
-	line1 := " ↑↓: Navigate  ←→: Collapse/Expand  Tab: Switch Panel  Space: Toggle Guard"
-	line2 := " R: Refresh  Q/Esc: Quit"
-
-	return []string{line1, line2}
+	// Keep frame-rendered status text aligned with the key map help string.
+	return []string{
+		" " + s.keys.StatusBarHelp(),
+		"",
+	}
 }

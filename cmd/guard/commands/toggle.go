@@ -326,7 +326,7 @@ states, an error will be returned and no changes will be made (conflict detectio
 				// Get collection's current guard state to determine message
 				guardState := status.Guard
 
-				existing, _ := mgr.GetFileSystem().CheckFilesExist(status.Files)
+				existing, _ := mgr.CheckFilesExist(status.Files)
 				sort.Strings(existing)
 				for _, file := range existing {
 					if guardState {

@@ -80,6 +80,7 @@ func (a App) Init() tea.Cmd {
 		a.collectionsPanel.Init(),
 		a.statusBar.Init(),
 		a.errorModal.Init(),
+		a.searchBox.Init(),
 	)
 }
 
@@ -116,7 +117,7 @@ func (a App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 		// Priority 3: '/' activates search and gives it focus
-		if matchAppKey(msg, a.keys.Search) {
+		if matchAppKey(msg, a.keys.Search) && a.focus != FocusSearch {
 			cmd := a.searchBox.SetActive(true)
 			a.focus = FocusSearch
 			a.filesPanel.SetFocused(false)
@@ -164,7 +165,7 @@ func (a App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			a.collectionsPanel.SetFocused(false)
 		}
 
-		// Forward to files panel (for guard-1u0 to wire into FileTree)
+		// Forward to files panel to apply file tree filtering.
 		var cmd tea.Cmd
 		a.filesPanel, cmd = a.filesPanel.Update(msg)
 		cmds = append(cmds, cmd)

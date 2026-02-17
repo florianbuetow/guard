@@ -37,10 +37,13 @@ func (s SearchBox) Update(msg tea.Msg) (SearchBox, tea.Cmd) {
 		switch msg.Type {
 		case tea.KeyEscape:
 			s.textInput.SetValue("")
-			s.SetActive(false)
-			return s, func() tea.Msg {
-				return FilterChangedMsg{Query: ""}
-			}
+			deactivateCmd := s.SetActive(false)
+			return s, tea.Batch(
+				deactivateCmd,
+				func() tea.Msg {
+					return FilterChangedMsg{Query: ""}
+				},
+			)
 
 		default:
 			var cmd tea.Cmd
@@ -68,7 +71,11 @@ func (s SearchBox) View() string {
 // the prompt and a 1-cell cursor, so we subtract both.
 func (s *SearchBox) SetWidth(width int) {
 	promptWidth := StringWidth(s.textInput.Prompt)
-	s.textInput.Width = width - promptWidth - 1
+	inputWidth := width - promptWidth - 1
+	if inputWidth < 1 {
+		inputWidth = 1
+	}
+	s.textInput.Width = inputWidth
 }
 
 // SetActive activates or deactivates the search box.

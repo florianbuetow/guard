@@ -15,7 +15,7 @@ type KeyMap struct {
 	// Actions
 	Toggle      key.Binding // Space - toggle guard
 	ToggleAll   key.Binding // Shift+Space - toggle recursively (folders only)
-	SwitchPanel key.Binding // Tab - switch between Files and Collections
+	SwitchPanel key.Binding // Tab - cycle focus between Files, Collections, and Search (when active)
 	Refresh     key.Binding // R - refresh/reload
 
 	// Search
@@ -89,5 +89,5 @@ func (k KeyMap) FullHelp() [][]key.Binding {
 
 // StatusBarHelp returns the help text for the status bar
 func (k KeyMap) StatusBarHelp() string {
-	return "↑↓:Navigate  ←→:Expand/Collapse  Space:Toggle  Tab:Switch  /:Search  R:Refresh  Q:Quit"
+	return "↑↓: Navigate  ←→: Expand/Collapse  Space: Toggle  Tab: Switch Panel  /: Search  R: Refresh  Q: Quit"
 }

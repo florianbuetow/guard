@@ -97,8 +97,11 @@ func (ft *FileTree) applyFilter() {
 // markDescendantsVisible recursively marks all descendants of a node as visible.
 func markDescendantsVisible(node *FileNode, visible map[*FileNode]bool) {
 	for _, child := range node.Children {
+		if visible[child] {
+			continue
+		}
 		visible[child] = true
-		if child.IsDir {
+		if child.IsDir && !child.IsSymlink {
 			markDescendantsVisible(child, visible)
 		}
 	}

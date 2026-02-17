@@ -359,7 +359,7 @@ $ rm -rf tui-demo
 | `Space` | Toggle guard on file/folder | Toggle guard on collection | Type space character |
 | `Shift+Space` | Toggle guard recursively (folders) | N/A | N/A |
 | `/` | Activate search box | Activate search box | N/A |
-| `Esc` | Quit | Quit | Close search and clear query |
+| `Esc` | No action | No action | Close search and clear query |
 | `R` | Refresh from disk | Refresh from disk | N/A |
 | `Q` | Quit | Quit | Type 'q' character |
 
@@ -384,4 +384,3 @@ The TUI provides a faster, more intuitive workflow for managing file protection,
 ---
 
 [README](../README.md) | [Tutorial 1](TUTORIAL-1.md) | [Tutorial 2](TUTORIAL-2.md) | [Tutorial 3](TUTORIAL-3.md)
-
