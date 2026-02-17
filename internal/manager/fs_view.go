@@ -1,6 +1,10 @@
 package manager
 
-import "fmt"
+import (
+	"fmt"
+	"path/filepath"
+	"strings"
+)
 
 // DirEntry represents a directory entry for TUI display.
 type DirEntry struct {
@@ -28,7 +32,9 @@ func (m *Manager) ReadDir(path string) ([]DirEntry, error) {
 		}
 
 		if m.IsIgnored(entry.Path) && !m.IsRegisteredFile(entry.Path) {
-			continue
+			if !entry.IsDir || !m.HasRegisteredDescendants(entry.Path) {
+				continue
+			}
 		}
 
 		result = append(result, DirEntry{
@@ -39,6 +45,31 @@ func (m *Manager) ReadDir(path string) ([]DirEntry, error) {
 		})
 	}
 	return result, nil
+}
+
+// HasRegisteredDescendants returns true if dirPath contains registered files.
+func (m *Manager) HasRegisteredDescendants(dirPath string) bool {
+	if m.security == nil {
+		return false
+	}
+
+	absDirPath, err := filepath.Abs(dirPath)
+	if err != nil {
+		return false
+	}
+
+	dirPrefix := filepath.Clean(absDirPath)
+	if !strings.HasSuffix(dirPrefix, string(filepath.Separator)) {
+		dirPrefix += string(filepath.Separator)
+	}
+
+	for _, registeredPath := range m.security.GetRegisteredFiles() {
+		if strings.HasPrefix(filepath.Clean(registeredPath), dirPrefix) {
+			return true
+		}
+	}
+
+	return false
 }
 
 // CollectImmediateFiles returns immediate files in a directory.
