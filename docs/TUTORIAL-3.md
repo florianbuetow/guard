@@ -119,8 +119,8 @@ You'll see a dual-pane interface:
 ║   [G] shared.txt                       │                                    ║
 ║                                        │                                    ║
 ╠════════════════════════════════════════╧════════════════════════════════════╣
-║ ↑↓: Navigate  ←→: Collapse/Expand  Tab: Switch Panel  Space: Toggle Guard   ║
-║ R: Refresh  Q/Esc: Quit                                                     ║
+║ ↑↓:Navigate  ←→:Expand/Collapse  Space:Toggle  Tab:Switch  /:Search       ║
+║ R:Refresh  Q:Quit                                                          ║
 ╚═════════════════════════════════════════════════════════════════════════════╝
 ```
 
@@ -351,15 +351,17 @@ $ rm -rf tui-demo
 
 ## Keyboard Shortcuts Reference
 
-| Key | Files Panel | Collections Panel |
-|-----|-------------|-------------------|
-| `↑` / `↓` | Navigate files/folders | Navigate collections |
-| `←` / `→` | Collapse/Expand folders | N/A |
-| `Tab` | Switch to Collections Panel | Switch to Files Panel |
-| `Space` | Toggle guard on file/folder | Toggle guard on collection |
-| `Shift+Space` | Toggle guard recursively (folders) | N/A |
-| `R` | Refresh from disk | Refresh from disk |
-| `Q` / `Esc` | Quit | Quit |
+| Key | Files Panel | Collections Panel | Search Box |
+|-----|-------------|-------------------|------------|
+| `↑` / `↓` | Navigate files/folders | Navigate collections | N/A |
+| `←` / `→` | Collapse/Expand folders | N/A | N/A |
+| `Tab` | Switch to Collections Panel | Switch to Search (if active) or Files Panel | Switch to Files Panel |
+| `Space` | Toggle guard on file/folder | Toggle guard on collection | Type space character |
+| `Shift+Space` | Toggle guard recursively (folders) | N/A | N/A |
+| `/` | Activate search box | Activate search box | N/A |
+| `Esc` | Quit | Quit | Close search and clear query |
+| `R` | Refresh from disk | Refresh from disk | N/A |
+| `Q` | Quit | Quit | Type 'q' character |
 
 ---
 
