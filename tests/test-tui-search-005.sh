@@ -2,7 +2,6 @@
 
 # test-tui-search-005.sh - FUZZY SEARCH: No matches warning
 # Tests that a warning message is shown when no files match the search query.
-# TDD: This test should FAIL until the search feature is implemented.
 #
 # Prerequisites:
 # - tmux must be installed

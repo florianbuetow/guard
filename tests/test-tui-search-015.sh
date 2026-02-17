@@ -2,7 +2,6 @@
 
 # test-tui-search-015.sh - ENTER NO-OP: Enter does nothing in search box
 # Tests that pressing Enter in the search box does NOT deactivate it.
-# TDD: This test should FAIL until Enter behavior is removed.
 
 # Source helpers
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

@@ -2,7 +2,6 @@
 
 # test-tui-search-019.sh - BUG: Search prompt needs left padding
 # Tests that the search box prompt has a leading space for visual padding.
-# TDD: This test should FAIL until the prompt is changed to " Search: ".
 
 # Source helpers
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

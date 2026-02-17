@@ -2,7 +2,6 @@
 
 # test-tui-search-017.sh - ARROW KEYS + TAB FOCUS: Arrows navigate panel, not search, when panel is focused
 # Tests that arrow keys navigate the file tree when a panel has focus while search is visible.
-# TDD: This test should FAIL until Tab focus cycling is implemented.
 
 # Source helpers
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

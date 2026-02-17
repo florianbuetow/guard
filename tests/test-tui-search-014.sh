@@ -2,7 +2,6 @@
 
 # test-tui-search-014.sh - TAB FOCUS CYCLING: Tab cycles through search box
 # Tests that Tab cycles focus through Files, Collections, and Search box.
-# TDD: This test should FAIL until Tab focus cycling is implemented.
 
 # Source helpers
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
