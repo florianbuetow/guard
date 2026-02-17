@@ -86,8 +86,7 @@ func DefaultStyles() *Styles {
 
 		// Guard state styles
 		GuardExplicit: lipgloss.NewStyle().
-			Foreground(ColorSuccess).
-			Bold(true),
+			Foreground(ColorSuccess),
 		GuardImplicit: lipgloss.NewStyle().
 			Foreground(ColorSuccess),
 		GuardMixed: lipgloss.NewStyle().
