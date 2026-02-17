@@ -2,6 +2,8 @@ package manager
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
 
 	"github.com/florianbuetow/guard/internal/filesystem"
 	"github.com/florianbuetow/guard/internal/guardignore"
@@ -107,9 +109,27 @@ func (m *Manager) InitializeRegistry(mode, owner, group string, overwrite bool) 
 		return fmt.Errorf("failed to save new registry: %w", err)
 	}
 
+	guardignorePath := filepath.Join(filepath.Dir(m.registryPath), ".guardignore")
+	if err := m.createGuardignoreTemplate(guardignorePath); err != nil {
+		m.AddWarning(NewWarning(WarningGeneric, fmt.Sprintf("Could not create .guardignore template: %v", err)))
+	}
+
 	m.security = sec
 	m.initIgnoreMatcher()
 	return nil
+}
+
+func (m *Manager) createGuardignoreTemplate(path string) error {
+	if m.fs.FileExists(path) {
+		return nil
+	}
+
+	content := `# .guardignore works like .gitignore
+# By default guard also uses your .gitignore files (see use_gitignore in .guardfile)
+# add your custom ignore rules below
+`
+
+	return os.WriteFile(path, []byte(content), 0644)
 }
 
 // CheckFilesExist returns files that exist and files that are missing.
