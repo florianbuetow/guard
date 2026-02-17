@@ -56,6 +56,7 @@ test: build install
     go fmt ./...
     go test -v ./...
     echo "Running shell-based tests..."
+    chmod +x tests/*.sh
     INSTALL_BIN="${GOBIN:-$(go env GOPATH)/bin}"
     if [ -z "${GOBIN:-}" ] && [ ! -w "$INSTALL_BIN" ]; then
         INSTALL_BIN="/tmp/guard-bin"
@@ -334,6 +335,7 @@ ci-quiet:
     fi
 
     # Run shell tests
+    chmod +x tests/*.sh
     if OUTPUT=$(cd tests && ./run-cli-tests-sequential.sh 2>&1); then
         echo "✓ CLI tests passed"
     else
