@@ -55,3 +55,8 @@ type FolderCollapsedMsg struct {
 type CursorMovedMsg struct {
 	Index int
 }
+
+// FilterChangedMsg is sent when the search filter query changes
+type FilterChangedMsg struct {
+	Query string
+}

@@ -41,8 +41,9 @@ test_status_line_shows_key_hints_after_toggle() {
     tui_start 80 24
 
     # Sanity: key hints should be visible at startup
+    tui_assert_contains "/: Search" "Status bar shows search hint"
     tui_assert_contains "R: Refresh" "Status bar shows refresh hint"
-    tui_assert_contains "Q/Esc: Quit" "Status bar shows quit hint"
+    tui_assert_contains "Q: Quit" "Status bar shows quit hint"
 
     # Navigate to file and toggle guard
     # Root folder is first, then children are sorted: .guardfile, file1.txt
@@ -51,8 +52,9 @@ test_status_line_shows_key_hints_after_toggle() {
     tui_send_keys "Space"
 
     # After toggle, status bar should still show key hints
+    tui_assert_contains "/: Search" "Status bar still shows search hint after toggle"
     tui_assert_contains "R: Refresh" "Status bar still shows refresh hint after toggle"
-    tui_assert_contains "Q/Esc: Quit" "Status bar still shows quit hint after toggle"
+    tui_assert_contains "Q: Quit" "Status bar still shows quit hint after toggle"
 
     # Should NOT show temporary status messages
     tui_assert_not_contains "File guarded" "Status bar should not show file status messages"
