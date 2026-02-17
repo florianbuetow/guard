@@ -299,7 +299,7 @@ Empty or non-existent collections will generate warnings.`,
 				}
 
 				// Check which files exist on disk and print them (sorted)
-				existing, _ := mgr.GetFileSystem().CheckFilesExist(status.Files)
+				existing, _ := mgr.CheckFilesExist(status.Files)
 				sort.Strings(existing)
 
 				// Print header for this collection's files

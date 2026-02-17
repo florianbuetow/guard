@@ -9,7 +9,17 @@ This repository does not currently use release tags, so entries are grouped by d
 
 ### Added
 
-- No unreleased changes yet.
+- Added fuzzy search to the TUI: press `/` to activate a search box that filters the file tree in real-time using fuzzy matching.
+- Added focus cycling with `Tab` when search is active: Files → Collections → Search → Files.
+- Added 22 TUI integration tests covering search activation, typing, filtering, escape, focus cycling, and edge cases.
+
+### Fixed
+
+- Fixed cursor blink not working in the search box. The `tea.Cmd` returned by `textInput.Focus()` was being discarded; it is now propagated through `SetActive()`, `Focus()`, and `cycleFocus()`.
+
+### Changed
+
+- Changed focused panel title styling from bold (`\e[1m`) to reverse video (`\e[7m`) for better visual distinction of the active panel.
 
 ## [2026-02-13]
 

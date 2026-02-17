@@ -12,16 +12,18 @@ import (
 
 // FileTree is a Bubble Tea model for the file tree navigation
 type FileTree struct {
-	root      *FileNode
-	flatNodes []FlattenedNode
-	cursor    int
-	scroll    *ScrollState
-	width     int
-	height    int
-	styles    *Styles
-	keys      KeyMap
-	mgr       *manager.Manager
-	focused   bool
+	root         *FileNode
+	flatNodes    []FlattenedNode
+	allFlatNodes []FlattenedNode // Unfiltered cache for search filtering
+	filterQuery  string
+	cursor       int
+	scroll       *ScrollState
+	width        int
+	height       int
+	styles       *Styles
+	keys         KeyMap
+	mgr          *manager.Manager
+	focused      bool
 }
 
 // NewFileTree creates a new FileTree model
@@ -37,15 +39,79 @@ func NewFileTree(root *FileNode, mgr *manager.Manager, styles *Styles, keys KeyM
 	return ft
 }
 
-// refreshFlatNodes rebuilds the flattened node list
+// refreshFlatNodes rebuilds the flattened node list and applies the current filter
 func (ft *FileTree) refreshFlatNodes() {
-	ft.flatNodes = Flatten(ft.root)
+	ft.allFlatNodes = Flatten(ft.root)
+	ft.applyFilter()
+}
+
+// applyFilter filters flatNodes based on the current filterQuery
+func (ft *FileTree) applyFilter() {
+	if ft.filterQuery == "" {
+		ft.flatNodes = ft.allFlatNodes
+	} else {
+		// Collect all node names (files and directories) for fuzzy matching
+		var candidates []string
+		var candidateNodes []*FileNode
+		for _, fn := range ft.allFlatNodes {
+			candidates = append(candidates, fn.Node.Name)
+			candidateNodes = append(candidateNodes, fn.Node)
+		}
+
+		// Run fuzzy match
+		matches := FuzzyMatch(ft.filterQuery, candidates)
+
+		// Build set of nodes that should be visible (matches + ancestors + descendants)
+		visible := make(map[*FileNode]bool)
+		for _, m := range matches {
+			node := candidateNodes[m.Index]
+			visible[node] = true
+			// Walk up to root, marking ancestors visible
+			for p := node.Parent; p != nil; p = p.Parent {
+				visible[p] = true
+			}
+			// When a directory matches, mark its descendants visible too
+			if node.IsDir {
+				markDescendantsVisible(node, visible)
+			}
+		}
+
+		// Filter allFlatNodes to only visible nodes
+		ft.flatNodes = nil
+		for _, fn := range ft.allFlatNodes {
+			if visible[fn.Node] {
+				ft.flatNodes = append(ft.flatNodes, fn)
+			}
+		}
+	}
+
 	if ft.cursor >= len(ft.flatNodes) {
 		ft.cursor = len(ft.flatNodes) - 1
 	}
 	if ft.cursor < 0 {
 		ft.cursor = 0
 	}
+	ft.scroll.Update(ft.cursor, len(ft.flatNodes))
+}
+
+// markDescendantsVisible recursively marks all descendants of a node as visible.
+func markDescendantsVisible(node *FileNode, visible map[*FileNode]bool) {
+	for _, child := range node.Children {
+		if visible[child] {
+			continue
+		}
+		visible[child] = true
+		if child.IsDir && !child.IsSymlink {
+			markDescendantsVisible(child, visible)
+		}
+	}
+}
+
+// SetFilter sets the filter query and re-filters the tree
+func (ft *FileTree) SetFilter(query string) {
+	ft.filterQuery = query
+	ft.applyFilter()
+	ft.cursor = 0
 	ft.scroll.Update(ft.cursor, len(ft.flatNodes))
 }
 
@@ -82,6 +148,9 @@ func (ft FileTree) Update(msg tea.Msg) (FileTree, tea.Cmd) {
 		ft.height = msg.Height
 		ft.scroll.SetViewportSize(msg.Height) // Panel already accounts for borders
 
+	case FilterChangedMsg:
+		ft.SetFilter(msg.Query)
+
 	case RefreshMsg:
 		ft.refresh()
 	}
@@ -92,6 +161,9 @@ func (ft FileTree) Update(msg tea.Msg) (FileTree, tea.Cmd) {
 // View renders the file tree
 func (ft FileTree) View() string {
 	if len(ft.flatNodes) == 0 {
+		if ft.filterQuery != "" {
+			return "No matches found."
+		}
 		return "No files"
 	}
 

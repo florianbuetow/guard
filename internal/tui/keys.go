@@ -1,6 +1,8 @@
 package tui
 
 import (
+	"strings"
+
 	"github.com/charmbracelet/bubbles/key"
 )
 
@@ -15,11 +17,14 @@ type KeyMap struct {
 	// Actions
 	Toggle      key.Binding // Space - toggle guard
 	ToggleAll   key.Binding // Shift+Space - toggle recursively (folders only)
-	SwitchPanel key.Binding // Tab - switch between Files and Collections
+	SwitchPanel key.Binding // Tab - cycle focus between Files, Collections, and Search (when active)
 	Refresh     key.Binding // R - refresh/reload
 
+	// Search
+	Search key.Binding // / - activate search
+
 	// Exit
-	Quit key.Binding // Q or Esc - quit
+	Quit key.Binding // Q - quit
 }
 
 // DefaultKeyMap returns the default key bindings
@@ -57,9 +62,13 @@ func DefaultKeyMap() KeyMap {
 			key.WithKeys("r", "R"),
 			key.WithHelp("r", "refresh"),
 		),
+		Search: key.NewBinding(
+			key.WithKeys("/"),
+			key.WithHelp("/", "search"),
+		),
 		Quit: key.NewBinding(
-			key.WithKeys("q", "Q", "esc", "ctrl+c"),
-			key.WithHelp("q/Esc", "quit"),
+			key.WithKeys("q", "Q", "ctrl+c"),
+			key.WithHelp("q", "quit"),
 		),
 	}
 }
@@ -82,5 +91,13 @@ func (k KeyMap) FullHelp() [][]key.Binding {
 
 // StatusBarHelp returns the help text for the status bar
 func (k KeyMap) StatusBarHelp() string {
-	return "↑↓:Navigate  ←→:Expand/Collapse  Space:Toggle  Tab:Switch  R:Refresh  Q:Quit"
+	return strings.Join(k.StatusBarHelpLines(), "  ")
+}
+
+// StatusBarHelpLines returns wrapped help text lines for frame-rendered status bars.
+func (k KeyMap) StatusBarHelpLines() []string {
+	return []string{
+		"↑↓: Navigate  ←→: Expand/Collapse  Space: Toggle  /: Search",
+		"Tab: Switch Panel  R: Refresh  Q: Quit",
+	}
 }
