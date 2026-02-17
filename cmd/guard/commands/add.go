@@ -116,7 +116,7 @@ func addFiles(mgr *manager.Manager, args []string, force bool) {
 func newAddFileCmd() *cobra.Command {
 	var force bool
 
-	return &cobra.Command{
+	cmd := &cobra.Command{
 		Use:   "file <paths>...",
 		Short: "Add files to the registry",
 		Long: `Add files to the registry.
@@ -134,4 +134,7 @@ To add files to collections, use: guard update <collection> add <files>...`,
 			addFiles(GetManager(cmd.Context()), args, force)
 		},
 	}
+
+	cmd.Flags().BoolVar(&force, "force", false, "Add files even if they match ignore patterns")
+	return cmd
 }

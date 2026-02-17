@@ -23,6 +23,10 @@ func (m *Manager) ReadDir(path string) ([]DirEntry, error) {
 
 	result := make([]DirEntry, 0, len(entries))
 	for _, entry := range entries {
+		if entry.Name == ".guardignore" && !m.IsRegisteredFile(entry.Path) {
+			continue
+		}
+
 		if m.IsIgnored(entry.Path) && !m.IsRegisteredFile(entry.Path) {
 			continue
 		}
