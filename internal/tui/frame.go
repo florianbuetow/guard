@@ -29,13 +29,22 @@ const (
 // RenderFrame renders the complete TUI frame with embedded panel names
 // and proper double-line border characters.
 //
-// Frame structure:
+// Frame structure (without search):
 // ╔═ Files ════════════════════════════════╤═ Collections ══════════════════════╗
 // ║                                        │                                    ║
 // ║ ...content...                          │ ...content...                      ║
 // ╠════════════════════════════════════════╧════════════════════════════════════╣
 // ║ ↑↓: Navigate  ←→: Collapse/Expand  Tab: Switch Panel  Space: Toggle Guard   ║
 // ║ R: Refresh  Q/Esc: Quit                                                     ║
+// ╚═════════════════════════════════════════════════════════════════════════════╝
+//
+// Frame structure (with search active):
+// ╔═ Files ════════════════════════════════╤═ Collections ══════════════════════╗
+// ║ ...content...                          │ ...content...                      ║
+// ╠════════════════════════════════════════╧════════════════════════════════════╣
+// ║ Search: query                                                               ║
+// ╠════════════════════════════════════════════════════════════════════════════╣
+// ║ ↑↓: Navigate  ...                                                           ║
 // ╚═════════════════════════════════════════════════════════════════════════════╝
 func RenderFrame(
 	leftTitle string,
@@ -46,6 +55,7 @@ func RenderFrame(
 	leftWidth int,
 	rightWidth int,
 	contentHeight int,
+	searchLine string,
 ) string {
 	totalWidth := leftWidth + rightWidth + 3 // +3 for left border, separator, right border
 
@@ -81,11 +91,30 @@ func RenderFrame(
 		result.WriteString("\n")
 	}
 
-	// === STATUS BAR JUNCTION ===
-	// Format: ╠════════════════════════════════════════╧════════════════════════════════════╣
-	junctionLine := renderStatusJunction(leftWidth, rightWidth)
-	result.WriteString(junctionLine)
-	result.WriteString("\n")
+	// === SEARCH BAR (when active) ===
+	if searchLine != "" {
+		// Search junction: closes panel separator with ╧
+		searchJunction := renderStatusJunction(leftWidth, rightWidth)
+		result.WriteString(searchJunction)
+		result.WriteString("\n")
+
+		// Search box row: full width, no panel separator
+		paddedSearch := padOrTruncate(searchLine, totalWidth-2)
+		result.WriteString(FrameVertical)
+		result.WriteString(paddedSearch)
+		result.WriteString(FrameVertical)
+		result.WriteString("\n")
+
+		// Status junction: full width, no ╧ (panels already closed above)
+		statusJunction := renderFullWidthJunction(totalWidth)
+		result.WriteString(statusJunction)
+		result.WriteString("\n")
+	} else {
+		// === STATUS BAR JUNCTION (no search) ===
+		junctionLine := renderStatusJunction(leftWidth, rightWidth)
+		result.WriteString(junctionLine)
+		result.WriteString("\n")
+	}
 
 	// === STATUS BAR CONTENT ===
 	for _, statusLine := range statusLines {
@@ -162,6 +191,18 @@ func renderStatusJunction(leftWidth, rightWidth int) string {
 	result.WriteString(strings.Repeat(FrameHorizontal, rightWidth))
 
 	// Right junction: ╣
+	result.WriteString(FrameRightJunction)
+
+	return result.String()
+}
+
+// renderFullWidthJunction creates a full-width junction line (no panel separator)
+// Format: ╠═══════════════════════════════════════════════════════════════════╣
+func renderFullWidthJunction(totalWidth int) string {
+	var result strings.Builder
+
+	result.WriteString(FrameLeftJunction)
+	result.WriteString(strings.Repeat(FrameHorizontal, totalWidth-2)) // -2 for left and right junctions
 	result.WriteString(FrameRightJunction)
 
 	return result.String()
