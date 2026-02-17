@@ -21,14 +21,18 @@ func (m *Manager) ReadDir(path string) ([]DirEntry, error) {
 		return nil, err
 	}
 
-	result := make([]DirEntry, len(entries))
-	for i, entry := range entries {
-		result[i] = DirEntry{
+	result := make([]DirEntry, 0, len(entries))
+	for _, entry := range entries {
+		if m.IsIgnored(entry.Path) && !m.IsRegisteredFile(entry.Path) {
+			continue
+		}
+
+		result = append(result, DirEntry{
 			Name:   entry.Name,
 			Path:   entry.Path,
 			IsDir:  entry.IsDir,
 			IsLink: entry.IsLink,
-		}
+		})
 	}
 	return result, nil
 }
