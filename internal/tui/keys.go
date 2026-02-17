@@ -1,6 +1,8 @@
 package tui
 
 import (
+	"strings"
+
 	"github.com/charmbracelet/bubbles/key"
 )
 
@@ -89,5 +91,13 @@ func (k KeyMap) FullHelp() [][]key.Binding {
 
 // StatusBarHelp returns the help text for the status bar
 func (k KeyMap) StatusBarHelp() string {
-	return "↑↓: Navigate  ←→: Expand/Collapse  Space: Toggle  Tab: Switch Panel  /: Search  R: Refresh  Q: Quit"
+	return strings.Join(k.StatusBarHelpLines(), "  ")
+}
+
+// StatusBarHelpLines returns wrapped help text lines for frame-rendered status bars.
+func (k KeyMap) StatusBarHelpLines() []string {
+	return []string{
+		"↑↓: Navigate  ←→: Expand/Collapse  Space: Toggle  /: Search",
+		"Tab: Switch Panel  R: Refresh  Q: Quit",
+	}
 }

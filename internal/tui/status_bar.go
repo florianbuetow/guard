@@ -124,9 +124,6 @@ func (s StatusBar) RenderHelp() string {
 
 // ContentLines returns the status bar content as lines for the frame
 func (s StatusBar) ContentLines() []string {
-	// Keep frame-rendered status text aligned with the key map help string.
-	return []string{
-		" " + s.keys.StatusBarHelp(),
-		"",
-	}
+	lines := s.keys.StatusBarHelpLines()
+	return []string{" " + lines[0], " " + lines[1]}
 }
