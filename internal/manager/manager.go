@@ -108,8 +108,8 @@ func (m *Manager) InitializeRegistry(mode, owner, group string, overwrite bool) 
 	return nil
 }
 
-// CheckFilesExist checks which paths exist on disk.
-func (m *Manager) CheckFilesExist(paths []string) (existing, missing []string) {
+// CheckFilesExist returns files that exist and files that are missing.
+func (m *Manager) CheckFilesExist(paths []string) (existing []string, missing []string) {
 	return m.fs.CheckFilesExist(paths)
 }
 

@@ -2,7 +2,7 @@ package tui
 
 import "testing"
 
-func TestCalculateScrollOffset(t *testing.T) {
+func TestScrollState_UpdateOffset(t *testing.T) {
 	tests := []struct {
 		name           string
 		cursor         int
@@ -10,60 +10,45 @@ func TestCalculateScrollOffset(t *testing.T) {
 		viewportHeight int
 		want           int
 	}{
-		// Items fit in viewport — no scroll needed
+		// Items fit in viewport: no scroll needed.
 		{"all items fit", 0, 5, 10, 0},
 		{"exact fit", 0, 10, 10, 0},
-
-		// Cursor at start — no scroll needed
 		{"cursor at start, large list", 0, 20, 10, 0},
-
-		// Cursor at end
+		{"cursor just below viewport", 10, 20, 10, 1},
 		{"cursor at end", 19, 20, 10, 10},
 
-		// Cursor in middle
-		{"cursor mid, margin pushes offset", 10, 20, 10, 3},
-
-		// Small viewport (no floor-clamp on margin)
-		// scrollMargin = viewportHeight / 4 (integer division)
-
-		// viewport=1: margin=0, minOffset = cursor - 1 + 0 + 1 = cursor
+		// Small viewports.
 		{"viewport 1, cursor 0", 0, 7, 1, 0},
 		{"viewport 1, cursor 3", 3, 7, 1, 3},
 		{"viewport 1, cursor 6 (last)", 6, 7, 1, 6},
-
-		// viewport=2: margin=0, minOffset = cursor - 2 + 0 + 1 = cursor - 1
 		{"viewport 2, cursor 0", 0, 7, 2, 0},
 		{"viewport 2, cursor 1", 1, 7, 2, 0},
 		{"viewport 2, cursor 3", 3, 7, 2, 2},
 		{"viewport 2, cursor 6 (last)", 6, 7, 2, 5},
-
-		// viewport=3: margin=0, minOffset = cursor - 3 + 0 + 1 = cursor - 2
 		{"viewport 3, cursor 0", 0, 7, 3, 0},
 		{"viewport 3, cursor 2", 2, 7, 3, 0},
 		{"viewport 3, cursor 3", 3, 7, 3, 1},
 		{"viewport 3, cursor 6 (last)", 6, 7, 3, 4},
-
-		// viewport=4: margin=1, minOffset = cursor - 4 + 1 + 1 = cursor - 2
 		{"viewport 4, cursor 0", 0, 7, 4, 0},
-		{"viewport 4, cursor 3", 3, 7, 4, 1},
+		{"viewport 4, cursor 3", 3, 7, 4, 0},
 		{"viewport 4, cursor 6 (last)", 6, 7, 4, 3},
-
-		// Edge cases
 		{"one item, viewport 1", 0, 1, 1, 0},
 		{"two items, viewport 1, cursor 1", 1, 2, 1, 1},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := CalculateScrollOffset(tt.cursor, tt.totalItems, tt.viewportHeight)
+			s := NewScrollState(tt.viewportHeight)
+			s.Update(tt.cursor, tt.totalItems)
+			got := s.Offset
 			if got != tt.want {
-				t.Errorf("CalculateScrollOffset(%d, %d, %d) = %d, want %d",
+				t.Errorf("offset(cursor=%d, totalItems=%d, viewport=%d) = %d, want %d",
 					tt.cursor, tt.totalItems, tt.viewportHeight, got, tt.want)
 			}
 		})
 	}
 }
 
-func TestCalculateVisibleRange(t *testing.T) {
+func TestScrollState_CalculateVisibleRange(t *testing.T) {
 	tests := []struct {
 		name           string
 		cursor         int
@@ -83,9 +68,11 @@ func TestCalculateVisibleRange(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			start, end := CalculateVisibleRange(tt.cursor, tt.totalItems, tt.viewportHeight)
+			s := NewScrollState(tt.viewportHeight)
+			s.Update(tt.cursor, tt.totalItems)
+			start, end := s.GetVisibleRange()
 			if start != tt.wantStart || end != tt.wantEnd {
-				t.Errorf("CalculateVisibleRange(%d, %d, %d) = (%d, %d), want (%d, %d)",
+				t.Errorf("visibleRange(cursor=%d, totalItems=%d, viewport=%d) = (%d, %d), want (%d, %d)",
 					tt.cursor, tt.totalItems, tt.viewportHeight, start, end, tt.wantStart, tt.wantEnd)
 			}
 		})
@@ -140,18 +127,18 @@ func TestScrollState(t *testing.T) {
 	t.Run("SetViewportSize recalculates", func(t *testing.T) {
 		s := NewScrollState(10)
 		s.Update(15, 20)
-		// viewport=10: margin=2, minOffset=15-10+2+1=8, offset=8
-		if s.Offset != 8 {
-			t.Errorf("Offset before resize = %d, want 8", s.Offset)
+		// viewport=10, cursor=15 => offset=6 (cursor kept at bottom edge)
+		if s.Offset != 6 {
+			t.Errorf("Offset before resize = %d, want 6", s.Offset)
 		}
 
 		s.SetViewportSize(5)
 		if s.ViewportSize != 5 {
 			t.Errorf("ViewportSize = %d, want 5", s.ViewportSize)
 		}
-		// viewport=5: margin=1, minOffset=15-5+1+1=12, offset=12
-		if s.Offset != 12 {
-			t.Errorf("Offset after resize = %d, want 12", s.Offset)
+		// viewport=5, cursor=15 => offset=11
+		if s.Offset != 11 {
+			t.Errorf("Offset after resize = %d, want 11", s.Offset)
 		}
 	})
 
@@ -163,4 +150,73 @@ func TestScrollState(t *testing.T) {
 			t.Errorf("GetVisibleRange() = (%d, %d), want (0, 10)", start, end)
 		}
 	})
+}
+
+func TestScrollState_CursorFloatsFreely(t *testing.T) {
+	// Simulates cursor moving down past viewport, then back up.
+	// The cursor should float freely within the viewport without scrolling.
+	// Scrolling should only happen when cursor would leave the visible area.
+	s := NewScrollState(10) // viewport of 10 items
+	totalItems := 30
+
+	// Move cursor down from 0 to 14 (scrolling kicks in at cursor 10)
+	for i := 0; i <= 14; i++ {
+		s.Update(i, totalItems)
+	}
+	// Cursor at 14, viewport should show [5..14], offset=5
+	if s.Offset != 5 {
+		t.Errorf("after scrolling down to 14: offset = %d, want 5", s.Offset)
+	}
+
+	// Now move cursor UP to 13 - still within viewport [5..14], offset should stay 5
+	s.Update(13, totalItems)
+	if s.Offset != 5 {
+		t.Errorf("cursor at 13 (within viewport): offset = %d, want 5 (no scroll)", s.Offset)
+	}
+
+	// Move cursor UP to 10 - still within viewport [5..14], offset should stay 5
+	s.Update(10, totalItems)
+	if s.Offset != 5 {
+		t.Errorf("cursor at 10 (within viewport): offset = %d, want 5 (no scroll)", s.Offset)
+	}
+
+	// Move cursor UP to 5 - at top edge of viewport [5..14], offset should stay 5
+	s.Update(5, totalItems)
+	if s.Offset != 5 {
+		t.Errorf("cursor at 5 (top edge of viewport): offset = %d, want 5 (no scroll)", s.Offset)
+	}
+
+	// Move cursor UP to 4 - above viewport, offset should decrease to 4
+	s.Update(4, totalItems)
+	if s.Offset != 4 {
+		t.Errorf("cursor at 4 (above viewport): offset = %d, want 4 (scroll up)", s.Offset)
+	}
+
+	// Move cursor UP to 0 - offset should follow cursor
+	s.Update(0, totalItems)
+	if s.Offset != 0 {
+		t.Errorf("cursor at 0: offset = %d, want 0", s.Offset)
+	}
+}
+
+func TestScrollState_GetVisibleRange_Stateful(t *testing.T) {
+	s := NewScrollState(10)
+	totalItems := 30
+
+	// Scroll down to cursor 14 (offset should be 5)
+	for i := 0; i <= 14; i++ {
+		s.Update(i, totalItems)
+	}
+
+	start, end := s.GetVisibleRange()
+	if start != 5 || end != 15 {
+		t.Errorf("after scrolling to 14: range = (%d, %d), want (5, 15)", start, end)
+	}
+
+	// Move cursor up to 10 (still within viewport), range should not change
+	s.Update(10, totalItems)
+	start, end = s.GetVisibleRange()
+	if start != 5 || end != 15 {
+		t.Errorf("cursor at 10 (within viewport): range = (%d, %d), want (5, 15)", start, end)
+	}
 }

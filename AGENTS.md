@@ -8,13 +8,26 @@ Guard is a Go CLI/TUI tool that protects files from unwanted modifications by AI
 
 ```bash
 just build          # Build binary to ./bin/guard
-just install        # Install to $GOPATH/bin
+just install        # Install to $GOPATH/bin (DO NOT use during development — see warning below)
 just test           # Format, build, install, run all tests
 just ci-quiet       # Full CI pipeline with minimal output
 just fmt            # Format Go code
 just lint           # Run linter (golangci-lint or go vet fallback)
 just clean          # Remove build artifacts
 ```
+
+### Development builds
+
+**Do NOT run `just install` during development.** It overwrites the latest stable release in `$GOPATH/bin` with the in-development build. Instead, build the binary and use it directly:
+
+```bash
+just build                  # Builds to ./bin/guard
+cp bin/guard ./guard        # Copy to project root for test scripts
+./guard -i                  # Run directly
+tests/test-tui-search-001.sh  # Test scripts find ./guard automatically
+```
+
+Only use `just install` when you intentionally want to update the system-wide binary (e.g., after merging to main).
 
 ## Testing
 
@@ -61,6 +74,10 @@ internal/registry/   Data model, YAML serialization (.guardfile)
 - Registry stores relative paths; filesystem operations use absolute paths
 - Platform-specific code lives in `filesystem_darwin.go` / `filesystem_linux.go`
 
+## Git Rules
+
+- **Never use `git -C <path>`** to operate on other worktrees. Always use the full `git` command from the current working directory.
+
 ## Code Style
 
 - Go standard formatting (`go fmt`)
@@ -92,3 +109,21 @@ internal/registry/   Data model, YAML serialization (.guardfile)
 2. Verify it fails with `just test`
 3. Implement the fix
 4. Verify it passes with `just test`
+
+## Ticket Management
+
+Every feature request or bug fix must have a corresponding test ticket that blocks it. The test ticket describes how to write a failing test that confirms the feature is not yet implemented or the bug still exists. The implementation ticket depends on the test ticket — no implementation work begins until the failing test is written and verified.
+
+### Workflow
+1. Create a test ticket: "Write acceptance tests for: \<feature/bug summary\>"
+2. Create the implementation ticket: "\<feature/bug summary\>"
+3. Add a dependency: implementation ticket depends on test ticket (`bd dep add <impl> <test>`)
+4. Write the failing test first, verify it fails
+5. Close the test ticket
+6. Implement the feature/fix, verify the test passes
+7. Close the implementation ticket
+
+### Rules
+- **No implementation without a failing test** — every implementation ticket must be blocked by a test ticket
+- **Tests must fail first** — a test ticket is only closed once the test exists and fails against current code
+- **Test describes the "what", not the "how"** — test tickets describe observable behavior to assert, not implementation details

@@ -18,6 +18,26 @@ Guard provides you the ability to toggle the `guard` of individual `files`, defi
 2. [Protect collection of files](docs/TUTORIAL-2.md)
 3. [Interactively protect files](docs/TUTORIAL-3.md)
 
+### Interactive Mode with Fuzzy Search
+
+```
+╔═ Files ════════════════════════════════╤═ Collections ════════════════╗
+║ ▼ src                                  │ [G] core-modules             ║
+║ │ ├─ [G] main.go                       │ [-] test-fixtures            ║
+║ │ └─ [G] config.go                     │                              ║
+║ ▶ docs                                 │                              ║
+║   [-] README.md                        │                              ║
+║   [ ] notes.txt                        │                              ║
+╠════════════════════════════════════════╧══════════════════════════════╣
+║  Search: main                                                         ║
+╠═══════════════════════════════════════════════════════════════════════╣
+║ ↑↓:Navigate  ←→:Expand/Collapse  Space:Toggle  Tab:Switch  /:Search   ║
+║ R:Refresh  Q:Quit                                                     ║
+╚═══════════════════════════════════════════════════════════════════════╝
+```
+
+Press `/` to activate fuzzy search and instantly filter the file tree. Press `Esc` to clear and close the search box. Use `Tab` to cycle focus between panels and the search box.
+
 Follow the onboarding guide below to make `guard` your own tool.
 
 ## How does it do it?
@@ -52,7 +72,7 @@ If you're on Windows, consider using:
 
 ## Critical Security Requirement for AI Development
 
-**⚠️ IMPORTANT**: When using Guard with AI coding agents (Claude, Cursor, GitHub Copilot, etc.), the user account running the AI coding agent **MUST NOT** have sudo privileges or at the very least using sudo must require entering a password.
+**IMPORTANT**: When using Guard with AI coding agents (Claude, Cursor, GitHub Copilot, etc.), the user account running the AI coding agent **MUST NOT** have sudo privileges or at the very least using sudo must require entering a password.
 
 This is essential because:
 - Guard uses `sudo` to change file ownership and permissions to protect files
@@ -344,30 +364,69 @@ Guard uses a comprehensive testing strategy:
 
 # Contributing
 
-We welcome contributions! Here's how you can help improve Guard:
+Guard is an AI-developed project with human oversight. We welcome contributions in the form of **bug reports** and **feature suggestions** — not code pull requests.
 
-## Feedback
+## Why No Code PRs?
 
-Have suggestions or ideas? We'd love to hear from you! Please open an [issue](https://github.com/florianbuetow/guard/issues) with your feedback.
+Guard is built and maintained by AI agents guided by human constraints. Rather than reviewing externally written code, we let the AI generate fixes and features from clear, reproducible descriptions. This keeps the codebase consistent and avoids the overhead of reviewing vibe-coded contributions.
+
+**Instead of a pull request, file a bug report.** A well-written bug report is the most valuable contribution you can make.
 
 ## Bug Reports
 
-Found a bug? Please help us fix it by opening a [bug report](https://github.com/florianbuetow/guard/issues/new). Include as much detail as possible:
-- Steps to reproduce the issue
-- Expected behavior
-- Actual behavior
-- Your environment (OS, Go version, etc.)
+Found a bug? Open a [bug report](https://github.com/florianbuetow/guard/issues/new) with steps to reproduce. The best bug reports include one or both of the following:
 
-## Pull Requests
+### Option A: Shell test to reproduce
 
-Want to contribute code? Great! Here's how:
+Write a minimal shell script that demonstrates the bug. Follow the pattern used in `tests/`:
 
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Make your changes
-4. Commit your changes (`git commit -m 'Add some amazing feature'`)
-5. Push to the branch (`git push origin feature/amazing-feature`)
-6. Open a [Pull Request](https://github.com/florianbuetow/guard/pulls)
+```bash
+#!/usr/bin/env bash
+set -euo pipefail
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/helpers-cli.sh"
+setup_test_env
+
+# Setup
+guard init 0000 root wheel
+
+# Steps to reproduce
+echo "hello" > "$TEST_DIR/example.txt"
+guard add file example.txt
+guard enable file example.txt
+
+# What goes wrong
+OUTPUT=$(guard show file example.txt 2>&1)
+assert_output_contains "$OUTPUT" "expected content" "Bug: missing expected content"
+
+cleanup_test_env
+```
+
+### Option B: TUI screenshot (copy & paste)
+
+If the bug is in the interactive TUI, copy-paste the terminal output showing the issue and add a textual description of the bug:
+
+```
+┌─ Files ──────────────────────────┐┌─ Details ─────────────────────────┐
+│ ▸ example.txt          [guarded] ││ Path: ./example.txt               │
+│   other.txt          [unguarded] ││ Mode: 0644                        │
+│                                  ││ Status: guarded                   │
+│                                  ││                                   │
+│                                  ││ BUG: Details pane shows stale     │
+│                                  ││ info after toggling guard status  │
+└──────────────────────────────────┘└───────────────────────────────────┘
+```
+
+### What to include
+
+- **Environment**: OS, Go version (`go version`)
+- **Steps to reproduce**: Exact commands or keystrokes
+- **Expected behavior**: What should happen
+- **Actual behavior**: What happens instead
+
+## Feedback & Feature Requests
+
+Have suggestions or ideas? Open an [issue](https://github.com/florianbuetow/guard/issues) describing what you'd like to see and why.
 
 # License
 
