@@ -79,6 +79,9 @@ func (m *IgnoreMatcher) loadDir(relDir string) []gitignore.Pattern {
 func (m *IgnoreMatcher) parseIgnoreFile(ignoreFilePath, relDir string) []gitignore.Pattern {
 	f, err := os.Open(ignoreFilePath)
 	if err != nil {
+		if os.IsNotExist(err) {
+			return nil
+		}
 		return nil
 	}
 	defer f.Close()
@@ -97,9 +100,6 @@ func (m *IgnoreMatcher) parseIgnoreFile(ignoreFilePath, relDir string) []gitigno
 			continue
 		}
 		patterns = append(patterns, p)
-	}
-	if err := scanner.Err(); err != nil {
-		return nil
 	}
 
 	return patterns

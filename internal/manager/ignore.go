@@ -1,8 +1,11 @@
 package manager
 
-import "path/filepath"
+import (
+	"fmt"
+	"path/filepath"
 
-import "github.com/florianbuetow/guard/internal/guardignore"
+	"github.com/florianbuetow/guard/internal/guardignore"
+)
 
 // initIgnoreMatcher initializes the ignore matcher using current config.
 func (m *Manager) initIgnoreMatcher() {
@@ -14,6 +17,7 @@ func (m *Manager) initIgnoreMatcher() {
 	if rootDir == "" {
 		absRegistryPath, err := filepath.Abs(m.registryPath)
 		if err != nil {
+			m.AddWarning(NewWarning(WarningGeneric, fmt.Sprintf("Could not determine root directory for ignore rules: %v", err)))
 			return
 		}
 		rootDir = filepath.Dir(absRegistryPath)
@@ -35,6 +39,7 @@ func (m *Manager) IsIgnored(path string) bool {
 
 	relPath, err := m.security.ToRelativePath(path)
 	if err != nil {
+		m.AddWarning(NewWarning(WarningGeneric, fmt.Sprintf("Could not resolve path for ignore check: %s: %v", path, err)))
 		return false
 	}
 
