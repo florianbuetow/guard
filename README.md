@@ -28,6 +28,8 @@ Guard provides you the ability to toggle the `guard` of individual `files`, defi
 ║ ▶ docs                                 │                              ║
 ║   [-] README.md                        │                              ║
 ║   [ ] notes.txt                        │                              ║
+║ ▶ vendor/           (light blue)       │                              ║
+║   [g] dep.go        (light blue)       │                              ║
 ╠════════════════════════════════════════╧══════════════════════════════╣
 ║  Search: main                                                         ║
 ╠═══════════════════════════════════════════════════════════════════════╣
@@ -37,6 +39,8 @@ Guard provides you the ability to toggle the `guard` of individual `files`, defi
 ```
 
 Press `/` to activate fuzzy search and instantly filter the file tree. Press `Esc` to clear and close the search box. Use `Tab` to cycle focus between panels and the search box.
+
+Items that are gitignored but still visible (because they are guard-tracked) appear in light blue with a lowercase `[g]` indicator, so you can distinguish them from normal files at a glance.
 
 Follow the onboarding guide below to make `guard` your own tool.
 
@@ -173,6 +177,12 @@ guard config set owner <owner>
 
 # Update guard group only
 guard config set group <group>
+
+# Enable/disable .gitignore-based filtering in the TUI
+guard config set use_gitignore <true|false>
+
+# Enable/disable .guardignore-based filtering in the TUI
+guard config set use_guardignore <true|false>
 ```
 
 ## File Operations

@@ -7,6 +7,30 @@ This repository does not currently use release tags, so entries are grouped by d
 
 ## [Unreleased]
 
+### Added
+
+- Added `.guardignore` support: a `.gitignore`-style file for custom ignore patterns independent of git, parsed using the same gitignore pattern semantics (via `go-git`).
+- Added `use_gitignore` and `use_guardignore` config flags to the registry, controlling whether `.gitignore` and `.guardignore` rules are applied when filtering the TUI file tree. Both default to `true`.
+- Added `guard config set use_gitignore <true|false>` and `guard config set use_guardignore <true|false>` CLI commands.
+- Added `guard config show` output for `use_gitignore` and `use_guardignore` flags.
+- Added `IgnoreMatcher` package (`internal/guardignore`) that reads `.gitignore` and `.guardignore` files from each directory, caches patterns per directory, and evaluates ignore rules with proper directory-only semantics.
+- Added ignore-aware filtering in `Manager.ReadDir`: gitignored files are hidden unless they are guard-registered; gitignored directories are hidden unless they contain registered descendants.
+- Added `--force` flag to `guard add` to allow registering files that match ignore patterns.
+- Added `.guardignore` template creation on `guard init`.
+- Added `IsIgnored` field to `DirEntry` and `FileNode`, threading gitignore status from `Manager.ReadDir` through to the TUI renderer.
+- Added light blue color (`ColorIgnored`, ANSI 256-color 117) for gitignored-but-visible items in the TUI, with `[g]` (lowercase) guard indicator to distinguish them from normal `[G]` items.
+- Added `ItemIgnored` and `GuardIgnored` styles to the TUI style system.
+- Added 9 TUI integration tests for guardignore filtering, toggle behavior on gitignored folders, `[g]` vs `[G]` indicators, `.guardfile` hiding, and light blue ANSI color rendering.
+- Added 7 CLI integration tests for `guard config set/show use_gitignore` and `use_guardignore` including stacked scenarios.
+- Added `guardignore` package to architecture layering tests.
+
+### Fixed
+
+- Fixed toggle guard on gitignored folders to only affect already-registered files, skipping ignored unregistered files.
+- Fixed `ReadDir` to show gitignored directories that contain registered descendants instead of hiding them entirely.
+- Fixed `.guardfile` appearing in the TUI when it is gitignored and `use_gitignore` is enabled.
+- Removed bold styling from `GuardExplicit` indicator to maintain consistent weight across guard states.
+
 ### Changed
 
 - Extracted `LoadRegistry` boilerplate from 14 command files (26 call sites) into a single `PersistentPreRunE` in `main.go`, passing the manager via command context.
