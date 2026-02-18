@@ -51,6 +51,36 @@ Follow the onboarding guide below to make `guard` your own tool.
 3. It sets the immutable flag so that even the owner of the file cannot change its permissions without sudo.
 4. It restores the original file settings when you are done.
 
+## Filtering with .guardignore and .gitignore
+
+Guard can filter files using `.gitignore` and `.guardignore` files. Both use standard [gitignore syntax](https://git-scm.com/docs/gitignore), including negation patterns (`!`). By default, both are enabled.
+
+**How rules are evaluated:**
+
+Within each directory, `.gitignore` is read first, then `.guardignore` is appended — they are treated as one combined rule set. Directories are stacked from root to leaf, and the **last matching rule wins**.
+
+For a file at `src/vendor/file.go`, rules are evaluated in this order:
+
+```
+1. /.gitignore
+2. /.guardignore            ← can negate rules from 1
+3. /src/.gitignore          ← can negate rules from 1–2
+4. /src/.guardignore        ← can negate rules from 1–3
+5. /src/vendor/.gitignore   ← can negate rules from 1–4
+6. /src/vendor/.guardignore ← can negate rules from 1–5
+```
+
+This means `.guardignore` can un-ignore files that `.gitignore` would hide. For example, if your `.gitignore` contains `vendor/` but you still want Guard to manage files inside it, add `!vendor/` to your `.guardignore`.
+
+**Configuration:**
+
+```bash
+guard config set use_gitignore <true|false>      # default: true
+guard config set use_guardignore <true|false>     # default: true
+```
+
+When both are disabled, no filtering is applied and all files are visible. Registered (guard-tracked) files are always shown regardless of ignore rules.
+
 # Star This Repository
 
 If you find `guard` useful, please consider ⭐ starring this repository! It helps others discover the project and shows your appreciation for the work.
