@@ -33,6 +33,27 @@ func TestLayering_NoPrintingInManagerOrFilesystem(t *testing.T) {
 	assertNoForbiddenStrings(t, filesystemDir, forbidden)
 }
 
+func TestLayering_NoGuardignoreForbiddenImports(t *testing.T) {
+	repo := repoRoot(t)
+	guardignoreDir := filepath.Join(repo, "internal", "guardignore")
+	forbidden := []string{
+		"/internal/manager",
+		"/internal/tui",
+		"/internal/filesystem",
+		"/internal/security",
+		"/internal/registry",
+		"/cmd/guard",
+	}
+	assertNoForbiddenStrings(t, guardignoreDir, forbidden)
+}
+
+func TestLayering_NoPrintingInGuardignore(t *testing.T) {
+	repo := repoRoot(t)
+	guardignoreDir := filepath.Join(repo, "internal", "guardignore")
+	forbidden := []string{"fmt.Print"}
+	assertNoForbiddenStrings(t, guardignoreDir, forbidden)
+}
+
 func assertNoForbiddenStrings(t *testing.T, dir string, forbidden []string) {
 	t.Helper()
 	files, err := collectGoFiles(dir)

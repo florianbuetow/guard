@@ -50,10 +50,15 @@ func (ft *FileTree) applyFilter() {
 	if ft.filterQuery == "" {
 		ft.flatNodes = ft.allFlatNodes
 	} else {
-		// Collect all node names (files and directories) for fuzzy matching
+		// Collect all node names (files and directories) for fuzzy matching,
+		// excluding the root node (depth 0) which is always visible and should
+		// never influence which children are shown or hidden by search.
 		var candidates []string
 		var candidateNodes []*FileNode
 		for _, fn := range ft.allFlatNodes {
+			if fn.Node.Depth == 0 {
+				continue
+			}
 			candidates = append(candidates, fn.Node.Name)
 			candidateNodes = append(candidateNodes, fn.Node)
 		}
@@ -200,8 +205,11 @@ func (ft FileTree) renderNode(fn FlattenedNode, selected bool) string {
 	}
 
 	// Guard state indicator
-	stateStr := ft.styles.RenderGuardState(node.GuardState)
-	sb.WriteString(stateStr)
+	if node.IsIgnored && node.GuardState == GuardStateExplicit {
+		sb.WriteString(ft.styles.GuardIgnored.Render("[g]"))
+	} else {
+		sb.WriteString(ft.styles.RenderGuardState(node.GuardState))
+	}
 	sb.WriteString(" ")
 
 	// Name
@@ -221,16 +229,19 @@ func (ft FileTree) renderNode(fn FlattenedNode, selected bool) string {
 
 	// Apply styling based on node type and selection
 	var nameStyle lipgloss.Style
-	if node.IsSymlink {
+	if selected && ft.focused {
+		nameStyle = ft.styles.ItemSelected
+	} else if node.IsIgnored {
+		nameStyle = ft.styles.ItemIgnored
+		if node.IsDir {
+			nameStyle = nameStyle.Bold(true)
+		}
+	} else if node.IsSymlink {
 		nameStyle = ft.styles.ItemSymlink
 	} else if node.IsDir {
 		nameStyle = ft.styles.ItemFolder
 	} else {
 		nameStyle = ft.styles.ItemFile
-	}
-
-	if selected && ft.focused {
-		nameStyle = ft.styles.ItemSelected
 	}
 
 	sb.WriteString(nameStyle.Render(name))

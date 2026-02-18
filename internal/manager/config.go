@@ -8,19 +8,25 @@ import (
 
 // ConfigInfo represents the current guard configuration.
 type ConfigInfo struct {
-	Mode  os.FileMode
-	Owner string
-	Group string
+	Mode           os.FileMode
+	Owner          string
+	Group          string
+	UseGitignore   bool
+	UseGuardignore bool
 }
 
 // ConfigUpdateResult describes which config fields were updated.
 type ConfigUpdateResult struct {
-	ModeUpdated  bool
-	Mode         os.FileMode
-	OwnerUpdated bool
-	Owner        string
-	GroupUpdated bool
-	Group        string
+	ModeUpdated           bool
+	Mode                  os.FileMode
+	OwnerUpdated          bool
+	Owner                 string
+	GroupUpdated          bool
+	Group                 string
+	UseGitignoreUpdated   bool
+	UseGitignore          bool
+	UseGuardignoreUpdated bool
+	UseGuardignore        bool
 }
 
 // GetConfig returns the current configuration from the registry.
@@ -30,9 +36,11 @@ func (m *Manager) GetConfig() (ConfigInfo, error) {
 	}
 
 	return ConfigInfo{
-		Mode:  m.security.GetDefaultFileMode(),
-		Owner: m.security.GetDefaultFileOwner(),
-		Group: m.security.GetDefaultFileGroup(),
+		Mode:           m.security.GetDefaultFileMode(),
+		Owner:          m.security.GetDefaultFileOwner(),
+		Group:          m.security.GetDefaultFileGroup(),
+		UseGitignore:   m.security.GetUseGitignore(),
+		UseGuardignore: m.security.GetUseGuardignore(),
 	}, nil
 }
 
@@ -133,6 +141,60 @@ func (m *Manager) checkAndWarnGuardedFiles() {
 			fmt.Sprintf("%d file(s) and %d collection(s) are currently guarded.\nThe new config will only apply to future guard operations.\nTo apply the new config to existing guards, disable and re-enable them.", guardedFileCount, guardedCollCount),
 		)
 		m.AddWarning(warning)
+	}
+}
+
+// SetConfigUseGitignore updates the use_gitignore configuration flag.
+func (m *Manager) SetConfigUseGitignore(value string) (*ConfigUpdateResult, error) {
+	if m.security == nil {
+		return nil, fmt.Errorf(".guardfile not found. Run 'guard init' first")
+	}
+
+	enabled, err := parseBool(value)
+	if err != nil {
+		return nil, fmt.Errorf("invalid value for use_gitignore: %s (expected true or false)", value)
+	}
+
+	m.security.SetUseGitignore(enabled)
+
+	if err := m.SaveRegistry(); err != nil {
+		return nil, fmt.Errorf("failed to save config: %w", err)
+	}
+
+	result := &ConfigUpdateResult{UseGitignoreUpdated: true, UseGitignore: enabled}
+	return result, nil
+}
+
+// SetConfigUseGuardignore updates the use_guardignore configuration flag.
+func (m *Manager) SetConfigUseGuardignore(value string) (*ConfigUpdateResult, error) {
+	if m.security == nil {
+		return nil, fmt.Errorf(".guardfile not found. Run 'guard init' first")
+	}
+
+	enabled, err := parseBool(value)
+	if err != nil {
+		return nil, fmt.Errorf("invalid value for use_guardignore: %s (expected true or false)", value)
+	}
+
+	m.security.SetUseGuardignore(enabled)
+
+	if err := m.SaveRegistry(); err != nil {
+		return nil, fmt.Errorf("failed to save config: %w", err)
+	}
+
+	result := &ConfigUpdateResult{UseGuardignoreUpdated: true, UseGuardignore: enabled}
+	return result, nil
+}
+
+// parseBool parses a string as a boolean value (true/false).
+func parseBool(value string) (bool, error) {
+	switch value {
+	case "true":
+		return true, nil
+	case "false":
+		return false, nil
+	default:
+		return false, fmt.Errorf("invalid boolean value: %s", value)
 	}
 }
 

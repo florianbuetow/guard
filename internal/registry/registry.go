@@ -25,10 +25,30 @@ type LastToggle struct {
 
 // Config represents the registry configuration
 type Config struct {
-	GuardFileMode string      `yaml:"guard_mode"`
-	GuardOwner    string      `yaml:"guard_owner"`
-	GuardGroup    string      `yaml:"guard_group"`
-	LastToggle    *LastToggle `yaml:"last_toggle,omitempty"`
+	GuardFileMode  string      `yaml:"guard_mode"`
+	GuardOwner     string      `yaml:"guard_owner"`
+	GuardGroup     string      `yaml:"guard_group"`
+	LastToggle     *LastToggle `yaml:"last_toggle,omitempty"`
+	UseGitignore   *bool       `yaml:"use_gitignore,omitempty"`
+	UseGuardignore *bool       `yaml:"use_guardignore,omitempty"`
+}
+
+func (c *Config) GetUseGitignore() bool {
+	if c.UseGitignore == nil {
+		return true
+	}
+	return *c.UseGitignore
+}
+
+func (c *Config) GetUseGuardignore() bool {
+	if c.UseGuardignore == nil {
+		return true
+	}
+	return *c.UseGuardignore
+}
+
+func boolPtr(b bool) *bool {
+	return &b
 }
 
 // FileEntry represents a registered file in the registry
@@ -104,9 +124,11 @@ func NewRegistry(registryPath string, defaults *RegistryDefaults, overwrite bool
 
 	// Create config with normalized mode
 	tempConfig := Config{
-		GuardFileMode: normalizedMode,
-		GuardOwner:    defaults.GuardOwner,
-		GuardGroup:    defaults.GuardGroup,
+		GuardFileMode:  normalizedMode,
+		GuardOwner:     defaults.GuardOwner,
+		GuardGroup:     defaults.GuardGroup,
+		UseGitignore:   boolPtr(true),
+		UseGuardignore: boolPtr(true),
 	}
 	if err := validateConfig(tempConfig); err != nil {
 		return nil, fmt.Errorf("invalid default config: %w", err)
@@ -840,6 +862,34 @@ func (r *Registry) SetDefaultFileGroup(group string) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	r.config.GuardGroup = strings.TrimSpace(group)
+}
+
+// GetUseGitignore returns whether .gitignore rules are enabled.
+func (r *Registry) GetUseGitignore() bool {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	return r.config.GetUseGitignore()
+}
+
+// GetUseGuardignore returns whether .guardignore rules are enabled.
+func (r *Registry) GetUseGuardignore() bool {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	return r.config.GetUseGuardignore()
+}
+
+// SetUseGitignore sets whether .gitignore rules are enabled.
+func (r *Registry) SetUseGitignore(enabled bool) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.config.UseGitignore = boolPtr(enabled)
+}
+
+// SetUseGuardignore sets whether .guardignore rules are enabled.
+func (r *Registry) SetUseGuardignore(enabled bool) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.config.UseGuardignore = boolPtr(enabled)
 }
 
 // GetLastToggle returns the last toggled item (name, type) or empty strings if none

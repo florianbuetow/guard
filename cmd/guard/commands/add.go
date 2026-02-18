@@ -13,6 +13,8 @@ import (
 // For collections, use 'guard create' instead.
 // For adding files to collections, use 'guard update <collection> add <files>...'
 func NewAddCmd() *cobra.Command {
+	var force bool
+
 	addCmd := &cobra.Command{
 		Use:   "add [file] <paths>...",
 		Short: "Add files to the registry",
@@ -32,9 +34,11 @@ To add files to collections, use: guard update <collection> add <files>...`,
 				os.Exit(1)
 			}
 
-			addFiles(GetManager(cmd.Context()), args)
+			addFiles(GetManager(cmd.Context()), args, force)
 		},
 	}
+
+	addCmd.Flags().BoolVar(&force, "force", false, "Add files even if they match ignore patterns")
 
 	// Add file subcommand for explicit usage (backward compatibility)
 	addCmd.AddCommand(newAddFileCmd())
@@ -43,24 +47,42 @@ To add files to collections, use: guard update <collection> add <files>...`,
 }
 
 // addFiles is the shared implementation for adding files.
-func addFiles(mgr *manager.Manager, args []string) {
+func addFiles(mgr *manager.Manager, args []string, force bool) {
+	filesToAdd := make([]string, 0, len(args))
+	ignoredFiles := make([]string, 0)
+	for _, path := range args {
+		if !force && !mgr.IsRegisteredFile(path) && mgr.IsIgnored(path) {
+			ignoredFiles = append(ignoredFiles, path)
+			continue
+		}
+		filesToAdd = append(filesToAdd, path)
+	}
+
+	for _, path := range ignoredFiles {
+		fmt.Fprintf(os.Stderr, "Warning: %s is ignored by .gitignore or .guardignore (use --force to add)\n", path)
+	}
+
+	if len(filesToAdd) == 0 {
+		return
+	}
+
 	// Count files already registered before adding
 	alreadyRegistered := 0
-	for _, path := range args {
+	for _, path := range filesToAdd {
 		if mgr.IsRegisteredFile(path) {
 			alreadyRegistered++
 		}
 	}
 
 	// Add files
-	if err := mgr.AddFiles(args); err != nil {
+	if err := mgr.AddFiles(filesToAdd); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)
 	}
 
 	// Count newly registered files
 	nowRegistered := 0
-	for _, path := range args {
+	for _, path := range filesToAdd {
 		if mgr.IsRegisteredFile(path) {
 			nowRegistered++
 		}
@@ -92,7 +114,9 @@ func addFiles(mgr *manager.Manager, args []string) {
 // newAddFileCmd creates the "add file" subcommand.
 // This is kept for backward compatibility with explicit 'file' keyword.
 func newAddFileCmd() *cobra.Command {
-	return &cobra.Command{
+	var force bool
+
+	cmd := &cobra.Command{
 		Use:   "file <paths>...",
 		Short: "Add files to the registry",
 		Long: `Add files to the registry.
@@ -107,7 +131,10 @@ To add files to collections, use: guard update <collection> add <files>...`,
 				os.Exit(1)
 			}
 
-			addFiles(GetManager(cmd.Context()), args)
+			addFiles(GetManager(cmd.Context()), args, force)
 		},
 	}
+
+	cmd.Flags().BoolVar(&force, "force", false, "Add files even if they match ignore patterns")
+	return cmd
 }

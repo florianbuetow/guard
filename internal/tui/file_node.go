@@ -13,6 +13,7 @@ type FileNode struct {
 	Path       string
 	IsDir      bool
 	IsSymlink  bool
+	IsIgnored  bool
 	Expanded   bool
 	Depth      int
 	GuardState GuardState
@@ -84,6 +85,7 @@ func populateChildren(node *FileNode, mgr *manager.Manager) error {
 
 	for i, entry := range entries {
 		child := NewFileNode(entry.Name, entry.Path, entry.IsDir, entry.IsLink, node.Depth+1, node)
+		child.IsIgnored = entry.IsIgnored
 		child.IsLastChild = i == len(entries)-1
 
 		// Update ancestor tracking

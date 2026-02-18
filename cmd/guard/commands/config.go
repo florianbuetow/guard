@@ -47,9 +47,11 @@ Output format:
 			}
 
 			fmt.Println("Configuration:")
-			fmt.Printf("  Mode:  %04o\n", config.Mode.Perm())
-			fmt.Printf("  Owner: %s\n", formatConfigValue(config.Owner))
-			fmt.Printf("  Group: %s\n", formatConfigValue(config.Group))
+			fmt.Printf("  Mode:            %04o\n", config.Mode.Perm())
+			fmt.Printf("  Owner:           %s\n", formatConfigValue(config.Owner))
+			fmt.Printf("  Group:           %s\n", formatConfigValue(config.Group))
+			fmt.Printf("  use_gitignore:   %t\n", config.UseGitignore)
+			fmt.Printf("  use_guardignore: %t\n", config.UseGuardignore)
 		},
 	}
 }
@@ -62,9 +64,11 @@ func newConfigSetCmd() *cobra.Command {
 		Long: `Update guard configuration values.
 
 Single value update:
-  guard config set mode <value>   - Set permission mode (octal, 000-777)
-  guard config set owner <value>  - Set default owner
-  guard config set group <value>  - Set default group
+  guard config set mode <value>            - Set permission mode (octal, 000-777)
+  guard config set owner <value>           - Set default owner
+  guard config set group <value>           - Set default group
+  guard config set use_gitignore <bool>    - Enable/disable .gitignore rules (true/false)
+  guard config set use_guardignore <bool>  - Enable/disable .guardignore rules (true/false)
 
 Bulk update (positional):
   guard config set <mode>                 - Update mode only
@@ -107,6 +111,18 @@ Bulk update (positional):
 					os.Exit(1)
 				}
 				result, err = mgr.SetConfigGroup(args[1])
+			case "use_gitignore":
+				if len(args) < 2 {
+					fmt.Fprintln(os.Stderr, "Error: use_gitignore value required (true or false)")
+					os.Exit(1)
+				}
+				result, err = mgr.SetConfigUseGitignore(args[1])
+			case "use_guardignore":
+				if len(args) < 2 {
+					fmt.Fprintln(os.Stderr, "Error: use_guardignore value required (true or false)")
+					os.Exit(1)
+				}
+				result, err = mgr.SetConfigUseGuardignore(args[1])
 			default:
 				// Bulk update: args are positional (mode [owner] [group])
 				modeStr := args[0]
@@ -167,6 +183,12 @@ func printConfigUpdates(result *manager.ConfigUpdateResult) {
 		} else {
 			fmt.Printf("  Group: %s\n", result.Group)
 		}
+	}
+	if result.UseGitignoreUpdated {
+		fmt.Printf("  use_gitignore: %t\n", result.UseGitignore)
+	}
+	if result.UseGuardignoreUpdated {
+		fmt.Printf("  use_guardignore: %t\n", result.UseGuardignore)
 	}
 }
 

@@ -43,6 +43,7 @@ Only use `just install` when you intentionally want to update the system-wide bi
 - TUI tests use tmux to spawn sessions, send keystrokes, capture screen output, and assert content
 - Each test creates its own temp directory and cleans up after itself
 - Always run `just test` or `just ci-quiet` to verify changes before claiming they work
+- **Tests in `tests/` are acceptance tests — do NOT modify existing test files.** Add new test files to cover new or additional requirements instead.
 
 ### Writing tests
 - CLI tests: use `assert_output_contains`, `assert_exit_code`, `assert_file_mode` etc. from `helpers-cli.sh`

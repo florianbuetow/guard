@@ -1,13 +1,18 @@
 package manager
 
-import "fmt"
+import (
+	"fmt"
+	"path/filepath"
+	"strings"
+)
 
 // DirEntry represents a directory entry for TUI display.
 type DirEntry struct {
-	Name   string
-	Path   string
-	IsDir  bool
-	IsLink bool
+	Name      string
+	Path      string
+	IsDir     bool
+	IsLink    bool
+	IsIgnored bool
 }
 
 // ReadDir reads a directory and returns entries for display.
@@ -21,16 +26,53 @@ func (m *Manager) ReadDir(path string) ([]DirEntry, error) {
 		return nil, err
 	}
 
-	result := make([]DirEntry, len(entries))
-	for i, entry := range entries {
-		result[i] = DirEntry{
-			Name:   entry.Name,
-			Path:   entry.Path,
-			IsDir:  entry.IsDir,
-			IsLink: entry.IsLink,
+	result := make([]DirEntry, 0, len(entries))
+	for _, entry := range entries {
+		if entry.Name == ".guardignore" && !m.IsRegisteredFile(entry.Path) {
+			continue
 		}
+
+		ignored := m.IsIgnored(entry.Path)
+		if ignored && !m.IsRegisteredFile(entry.Path) {
+			if !entry.IsDir || !m.HasRegisteredDescendants(entry.Path) {
+				continue
+			}
+		}
+
+		result = append(result, DirEntry{
+			Name:      entry.Name,
+			Path:      entry.Path,
+			IsDir:     entry.IsDir,
+			IsLink:    entry.IsLink,
+			IsIgnored: ignored,
+		})
 	}
 	return result, nil
+}
+
+// HasRegisteredDescendants returns true if dirPath contains registered files.
+func (m *Manager) HasRegisteredDescendants(dirPath string) bool {
+	if m.security == nil {
+		return false
+	}
+
+	absDirPath, err := filepath.Abs(dirPath)
+	if err != nil {
+		return false
+	}
+
+	dirPrefix := filepath.Clean(absDirPath)
+	if !strings.HasSuffix(dirPrefix, string(filepath.Separator)) {
+		dirPrefix += string(filepath.Separator)
+	}
+
+	for _, registeredPath := range m.security.GetRegisteredFiles() {
+		if strings.HasPrefix(filepath.Clean(registeredPath), dirPrefix) {
+			return true
+		}
+	}
+
+	return false
 }
 
 // CollectImmediateFiles returns immediate files in a directory.

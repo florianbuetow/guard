@@ -50,6 +50,10 @@ func (m *Manager) ToggleFilesInFolder(path string, recursive bool) (*ToggleFolde
 
 	for _, filePath := range files {
 		if !m.security.IsRegisteredFile(filePath) {
+			if m.IsIgnored(filePath) {
+				continue
+			}
+
 			mode, owner, group, err := m.fs.GetFileInfo(filePath)
 			if err != nil {
 				m.AddError(fmt.Sprintf("Error: Failed to get file info for %s: %v", filePath, err))
