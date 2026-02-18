@@ -2,7 +2,6 @@ package manager
 
 import (
 	"fmt"
-	"os"
 	"path/filepath"
 
 	"github.com/florianbuetow/guard/internal/filesystem"
@@ -129,7 +128,7 @@ func (m *Manager) createGuardignoreTemplate(path string) error {
 # add your custom ignore rules below
 `
 
-	return os.WriteFile(path, []byte(content), 0644)
+	return m.fs.WriteFile(path, []byte(content), 0644)
 }
 
 // CheckFilesExist returns files that exist and files that are missing.

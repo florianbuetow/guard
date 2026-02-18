@@ -303,18 +303,20 @@ ci-quiet:
     fi
 
     # Build
-    if just build >/dev/null 2>&1; then
+    if OUTPUT=$(just build 2>&1); then
         echo "✓ Build passed"
     else
-        echo "✗ Build failed"
+        echo "✗ Build failed:"
+        echo "$OUTPUT"
         exit 1
     fi
 
     # Install
-    if just install >/dev/null 2>&1; then
+    if OUTPUT=$(just install 2>&1); then
         echo "✓ Install passed"
     else
-        echo "✗ Install failed"
+        echo "✗ Install failed:"
+        echo "$OUTPUT"
         exit 1
     fi
 

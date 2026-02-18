@@ -161,6 +161,8 @@ func (m *Manager) SetConfigUseGitignore(value string) (*ConfigUpdateResult, erro
 		return nil, fmt.Errorf("failed to save config: %w", err)
 	}
 
+	m.initIgnoreMatcher()
+
 	result := &ConfigUpdateResult{UseGitignoreUpdated: true, UseGitignore: enabled}
 	return result, nil
 }
@@ -181,6 +183,8 @@ func (m *Manager) SetConfigUseGuardignore(value string) (*ConfigUpdateResult, er
 	if err := m.SaveRegistry(); err != nil {
 		return nil, fmt.Errorf("failed to save config: %w", err)
 	}
+
+	m.initIgnoreMatcher()
 
 	result := &ConfigUpdateResult{UseGuardignoreUpdated: true, UseGuardignore: enabled}
 	return result, nil
