@@ -38,6 +38,7 @@ build:
     @echo "Building guard..."
     @mkdir -p bin
     @go build -ldflags="-X main.version=$(git describe --tags --dirty 2>/dev/null || echo dev)" -o bin/guard ./cmd/guard
+    @[ "$(uname)" = "Darwin" ] && codesign -fs - bin/guard 2>/dev/null || true
     @echo "✓ Built: ./bin/guard"
     @echo ""
 
@@ -67,7 +68,7 @@ test: build install
     echo ""
 
 # Install guard to GOPATH/bin
-install:
+install: build
     #!/usr/bin/env bash
     set -e
     echo ""
@@ -78,6 +79,7 @@ install:
     mkdir -p "$INSTALL_BIN"
     echo "Installing guard to $INSTALL_BIN..."
     GOBIN="$INSTALL_BIN" go install -ldflags="-X main.version=$(git describe --tags --dirty 2>/dev/null || echo dev)" ./cmd/guard
+    if [ "$(uname)" = "Darwin" ]; then codesign -fs - "$INSTALL_BIN/guard" 2>/dev/null || true; fi
     echo "✓ Installed: $INSTALL_BIN/guard"
     echo ""
 
@@ -301,21 +303,18 @@ ci-quiet:
     fi
 
     # Build
-    mkdir -p bin
-    if OUTPUT=$(go build -ldflags="-X main.version=$(git describe --tags --always --dirty)" -o bin/guard ./cmd/guard 2>&1); then
+    if just build >/dev/null 2>&1; then
         echo "✓ Build passed"
     else
-        echo "✗ Build failed:"
-        echo "$OUTPUT"
+        echo "✗ Build failed"
         exit 1
     fi
 
     # Install
-    if OUTPUT=$(go install -ldflags="-X main.version=$(git describe --tags --always --dirty)" ./cmd/guard 2>&1); then
+    if just install >/dev/null 2>&1; then
         echo "✓ Install passed"
     else
-        echo "✗ Install failed:"
-        echo "$OUTPUT"
+        echo "✗ Install failed"
         exit 1
     fi
 

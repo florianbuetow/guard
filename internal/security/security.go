@@ -178,6 +178,16 @@ func (s *Security) GetUseGuardignore() bool {
 	return s.registry.GetUseGuardignore()
 }
 
+// SetUseGitignore sets whether .gitignore rules are enabled.
+func (s *Security) SetUseGitignore(enabled bool) {
+	s.registry.SetUseGitignore(enabled)
+}
+
+// SetUseGuardignore sets whether .guardignore rules are enabled.
+func (s *Security) SetUseGuardignore(enabled bool) {
+	s.registry.SetUseGuardignore(enabled)
+}
+
 // validateAllRegisteredPaths validates all file paths in the registry.
 // Called after loading from disk to detect tampering.
 func (s *Security) validateAllRegisteredPaths() error {

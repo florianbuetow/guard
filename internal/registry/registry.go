@@ -878,6 +878,20 @@ func (r *Registry) GetUseGuardignore() bool {
 	return r.config.GetUseGuardignore()
 }
 
+// SetUseGitignore sets whether .gitignore rules are enabled.
+func (r *Registry) SetUseGitignore(enabled bool) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.config.UseGitignore = boolPtr(enabled)
+}
+
+// SetUseGuardignore sets whether .guardignore rules are enabled.
+func (r *Registry) SetUseGuardignore(enabled bool) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.config.UseGuardignore = boolPtr(enabled)
+}
+
 // GetLastToggle returns the last toggled item (name, type) or empty strings if none
 func (r *Registry) GetLastToggle() (name string, toggleType string) {
 	r.mu.RLock()
