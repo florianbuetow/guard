@@ -17,6 +17,7 @@ var (
 	ColorEmpty       = lipgloss.Color("240") // Gray for empty collections
 	ColorPanelBorder = lipgloss.Color("8")   // Gray
 	ColorSelected    = lipgloss.Color("4")   // Blue
+	ColorIgnored     = lipgloss.Color("117") // Light blue for gitignored items
 )
 
 // Styles holds all the styles used in the TUI
@@ -40,6 +41,10 @@ type Styles struct {
 	GuardMixed    lipgloss.Style
 	GuardOff      lipgloss.Style
 	GuardNone     lipgloss.Style
+
+	// Ignored item styles
+	ItemIgnored  lipgloss.Style
+	GuardIgnored lipgloss.Style
 
 	// Tree styles
 	TreePrefix lipgloss.Style
@@ -95,6 +100,12 @@ func DefaultStyles() *Styles {
 			Foreground(ColorSecondary),
 		GuardNone: lipgloss.NewStyle().
 			Foreground(ColorDim),
+
+		// Ignored item styles
+		ItemIgnored: lipgloss.NewStyle().
+			Foreground(ColorIgnored),
+		GuardIgnored: lipgloss.NewStyle().
+			Foreground(ColorIgnored),
 
 		// Tree styles
 		TreePrefix: lipgloss.NewStyle().

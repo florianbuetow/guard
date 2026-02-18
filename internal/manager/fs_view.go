@@ -8,10 +8,11 @@ import (
 
 // DirEntry represents a directory entry for TUI display.
 type DirEntry struct {
-	Name   string
-	Path   string
-	IsDir  bool
-	IsLink bool
+	Name      string
+	Path      string
+	IsDir     bool
+	IsLink    bool
+	IsIgnored bool
 }
 
 // ReadDir reads a directory and returns entries for display.
@@ -31,17 +32,19 @@ func (m *Manager) ReadDir(path string) ([]DirEntry, error) {
 			continue
 		}
 
-		if m.IsIgnored(entry.Path) && !m.IsRegisteredFile(entry.Path) {
+		ignored := m.IsIgnored(entry.Path)
+		if ignored && !m.IsRegisteredFile(entry.Path) {
 			if !entry.IsDir || !m.HasRegisteredDescendants(entry.Path) {
 				continue
 			}
 		}
 
 		result = append(result, DirEntry{
-			Name:   entry.Name,
-			Path:   entry.Path,
-			IsDir:  entry.IsDir,
-			IsLink: entry.IsLink,
+			Name:      entry.Name,
+			Path:      entry.Path,
+			IsDir:     entry.IsDir,
+			IsLink:    entry.IsLink,
+			IsIgnored: ignored,
 		})
 	}
 	return result, nil
