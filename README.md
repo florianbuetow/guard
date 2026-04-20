@@ -40,6 +40,12 @@ Press `/` to activate fuzzy search and instantly filter the file tree. Press `Es
 
 Follow the onboarding guide below to make `guard` your own tool.
 
+## Why `HUMAN.md` Exists
+
+This repository includes an explanation artifact in [`HUMAN.md`](HUMAN.md). Its purpose is to document, in plain language, what Guard does, why it was built this way, where it is fragile, and what was learned while building it.
+
+The point is that the proof of understanding should travel with the project itself, not live only in a demo, a chat log, or the author's head.
+
 ## How does it do it?
 
 1. It remembers the mode of files (`owner`, `group` and `read/write/execute` permissions) in a `.guardfile`.
@@ -442,4 +448,3 @@ Under the following terms:
 - **ShareAlike** — If you remix, transform, or build upon the material, you must distribute your contributions under the same license
 
 For more information, visit: https://creativecommons.org/licenses/by-nc-sa/4.0/
-
