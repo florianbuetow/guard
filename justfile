@@ -13,6 +13,7 @@ help:
     @echo "  just build     - Build the guard binary"
     @echo "  just run       - Build and run the guard binary"
     @echo "  just test      - Format, build, install, and run tests with coverage"
+    @echo "  just show-failing-tests - Run every test individually and report only failures"
     @echo "  just install   - Install guard to GOPATH/bin"
     @echo "  just uninstall - Remove guard from GOPATH/bin"
     @echo "  just clean     - Remove build artifacts"
@@ -66,6 +67,13 @@ test: build install
     (cd tests && ./run-cli-tests-sequential.sh)
     (cd tests && SKIP_CLI_PREREQ=1 ./run-tui-tests-parallel.sh)
     echo ""
+
+# Run every test individually and report only the failing ones
+show-failing-tests:
+    @echo ""
+    @chmod +x tests/show-failing-tests.sh
+    ./tests/show-failing-tests.sh
+    @echo ""
 
 # Install guard to GOPATH/bin
 install: build
