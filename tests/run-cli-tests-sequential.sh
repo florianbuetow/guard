@@ -12,6 +12,12 @@ NC='\033[0m' # No Color
 # Get script directory
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
+# Wipe the shared test workspace before the run and on exit (covers fail-fast
+# and interrupts) so no leftover fixtures accumulate or poison later tooling.
+PROJECT_TMP="$SCRIPT_DIR/../.tmp"
+rm -rf "$PROJECT_TMP"
+trap 'rm -rf "$PROJECT_TMP"' EXIT INT TERM
+
 echo -e "${BLUE}========================================${NC}"
 echo -e "${BLUE}Guard CLI Test Runner${NC}"
 echo -e "${BLUE}========================================${NC}"

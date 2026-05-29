@@ -37,6 +37,7 @@ scratch
 # Temp dirs
 temp/
 tmp/
+.tmp/
 
 # macOS
 .DS_Store

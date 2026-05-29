@@ -213,6 +213,8 @@ ci:
     set -euo pipefail
     export GOCACHE="${GOCACHE:-/tmp/go-build-cache}"
     export GOLANGCI_LINT_CACHE="${GOLANGCI_LINT_CACHE:-/tmp/golangci-lint-cache}"
+    # Clear the shared test workspace so stale fixtures can't poison tooling.
+    rm -rf .tmp
     START_TIME=$(date +%s)
     just fmt
     just lint
@@ -232,6 +234,8 @@ ci:
 ci-quiet:
     #!/usr/bin/env bash
     set -euo pipefail
+    # Clear the shared test workspace so stale fixtures can't poison tooling.
+    rm -rf .tmp
     START_TIME=$(date +%s)
     echo ""
 

@@ -66,7 +66,13 @@ tui_screenshot() {
     # Also capture with ANSI codes for color debugging
     {
         echo "=== Screenshot $TUI_SCREENSHOT_COUNTER (with ANSI): $description ==="
+        echo "Timestamp: $(date '+%Y-%m-%d %H:%M:%S')"
+        echo "Test: $TUI_CURRENT_TEST"
+        echo "=================================================="
+        echo ""
         tmux capture-pane -t "$TUI_SESSION" -p -e 2>/dev/null || echo "[Session not available]"
+        echo ""
+        echo "=== End Screenshot ==="
     } > "${filepath%.txt}_ansi.txt"
 }
 
