@@ -19,6 +19,8 @@
 # 9. Each target has a single-line `# Description` comment directly above it.
 # ─────────────────────────────────────────────────────────────────────────────
 
+shellcheck_flags := "--shell=bash --external-sources --source-path=SCRIPTDIR --severity=error --exclude=SC1128"
+
 # Default recipe: show available commands
 _default:
     @just help
@@ -42,12 +44,13 @@ help:
     @printf "  %-38s %s\n" "just run" "Build and run the guard binary"
     @echo ""
     @printf "\033[0;33mCode Quality:\033[0m\n"
-    @printf "  %-38s %s\n" "just fmt" "Format Go code"
-    @printf "  %-38s %s\n" "just lint" "Run linter (golangci-lint or go vet)"
-    @printf "  %-38s %s\n" "just semgrep" "Run Semgrep static analysis"
-    @printf "  %-38s %s\n" "just cyclo" "Check cyclomatic complexity"
-    @printf "  %-38s %s\n" "just cognit" "Check cognitive complexity"
-    @printf "  %-38s %s\n" "just tidy" "Tidy module dependencies"
+    @printf "  %-38s %s\n" "just code-fmt" "Format Go code"
+    @printf "  %-38s %s\n" "just code-lint" "Run linter (golangci-lint or go vet)"
+    @printf "  %-38s %s\n" "just code-shellcheck" "Run ShellCheck over shell scripts"
+    @printf "  %-38s %s\n" "just code-semgrep" "Run Semgrep static analysis"
+    @printf "  %-38s %s\n" "just code-cyclo" "Check cyclomatic complexity"
+    @printf "  %-38s %s\n" "just code-cognit" "Check cognitive complexity"
+    @printf "  %-38s %s\n" "just code-tidy" "Tidy module dependencies"
     @echo ""
     @printf "\033[0;33mRelease & Versioning:\033[0m\n"
     @printf "  %-38s %s\n" "just version" "Print current version"
@@ -59,7 +62,7 @@ help:
     @printf "\033[0;33mCI & Testing:\033[0m\n"
     @printf "  %-38s %s\n" "just test" "Format, build, install, and run all tests"
     @printf "  %-38s %s\n" "just show-failing-tests" "Run every test individually and report only failures"
-    @printf "  %-38s %s\n" "just ci" "Run all checks and tests (fmt, lint, semgrep, complexity, test)"
+    @printf "  %-38s %s\n" "just ci" "Run all checks and tests (code checks and test)"
     @printf "  %-38s %s\n" "just ci-quiet" "Run all checks and tests with minimal output"
     @echo ""
 
@@ -83,6 +86,7 @@ check:
     @printf "\033[0;33mChecking optional dependencies...\033[0m\n"
     @echo ""
     @command -v golangci-lint >/dev/null 2>&1 && printf "\033[0;32m✓ golangci-lint (optional)\033[0m\n" || printf "\033[0;33m⚠ golangci-lint not found (optional - will use go vet instead)\033[0m\n"
+    @command -v shellcheck >/dev/null 2>&1 && printf "\033[0;32m✓ shellcheck (optional)\033[0m\n" || printf "\033[0;33m⚠ shellcheck not found (optional - required for just code-shellcheck/ci)\033[0m\n"
     @command -v semgrep >/dev/null 2>&1 && printf "\033[0;32m✓ semgrep (optional)\033[0m\n" || printf "\033[0;33m⚠ semgrep not found (optional - install with: pip3 install semgrep)\033[0m\n"
     @command -v gocyclo >/dev/null 2>&1 && printf "\033[0;32m✓ gocyclo (optional)\033[0m\n" || printf "\033[0;33m⚠ gocyclo not found (optional - will be auto-installed when needed)\033[0m\n"
     @command -v gocognit >/dev/null 2>&1 && printf "\033[0;32m✓ gocognit (optional)\033[0m\n" || printf "\033[0;33m⚠ gocognit not found (optional - will be auto-installed when needed)\033[0m\n"
@@ -155,7 +159,7 @@ run: build
     @echo ""
 
 # Format Go code
-fmt:
+code-fmt:
     @echo ""
     @printf "\033[0;34m=== Formatting Go code ===\033[0m\n"
     go fmt ./...
@@ -164,7 +168,7 @@ fmt:
 
 # Run linter
 # Falls back to go vet if golangci-lint is not installed
-lint:
+code-lint:
     @echo ""
     @printf "\033[0;34m=== Running linter ===\033[0m\n"
     @command -v golangci-lint >/dev/null 2>&1 && \
@@ -173,9 +177,20 @@ lint:
     @printf "\033[0;32m✓ Lint check passed\033[0m\n"
     @echo ""
 
+# Run ShellCheck over shell scripts
+code-shellcheck:
+    @echo ""
+    @printf "\033[0;34m=== Running ShellCheck ===\033[0m\n"
+    @command -v shellcheck >/dev/null 2>&1 || { printf "\033[0;31m✗ shellcheck not found - install with: brew install shellcheck\033[0m\n"; exit 1; }
+    @SCRIPT_COUNT=$(find tests -name '*.sh' -type f | wc -l | tr -d ' '); printf "Checking %s shell scripts under tests/\n" "$SCRIPT_COUNT"
+    @printf "Options: %s\n" "{{shellcheck_flags}}"
+    @find tests -name '*.sh' -type f -print0 | sort -z | xargs -0 shellcheck {{shellcheck_flags}}
+    @printf "\033[0;32m✓ ShellCheck passed\033[0m\n"
+    @echo ""
+
 # Run Semgrep static analysis
 # Installs Semgrep if not available and runs custom security rules
-semgrep:
+code-semgrep:
     @echo ""
     @printf "\033[0;34m=== Running Semgrep static analysis ===\033[0m\n"
     @command -v semgrep >/dev/null 2>&1 || { echo "Installing Semgrep..."; pip3 install semgrep 2>/dev/null || pip install semgrep; }
@@ -205,7 +220,7 @@ semgrep:
 # Measures the number of linearly independent paths through code
 # High values indicate functions that are hard to test and maintain
 # Note: Threshold set to baseline current codebase; lower over time (target: 15)
-cyclo:
+code-cyclo:
     @echo ""
     @printf "\033[0;34m=== Checking cyclomatic complexity ===\033[0m\n"
     @command -v gocyclo >/dev/null 2>&1 || { echo "Installing gocyclo..."; go install github.com/fzipp/gocyclo/cmd/gocyclo@latest; }
@@ -217,7 +232,7 @@ cyclo:
 # Measures how difficult code is for humans to understand
 # Penalizes nesting, breaks in flow, and recursion
 # Note: Threshold set to baseline current codebase; lower over time (target: 15)
-cognit:
+code-cognit:
     @echo ""
     @printf "\033[0;34m=== Checking cognitive complexity ===\033[0m\n"
     @command -v gocognit >/dev/null 2>&1 || { echo "Installing gocognit..."; go install github.com/uudashr/gocognit/cmd/gocognit@latest; }
@@ -226,7 +241,7 @@ cognit:
     @echo ""
 
 # Tidy module dependencies
-tidy:
+code-tidy:
     @echo ""
     @printf "\033[0;34m=== Tidying module dependencies ===\033[0m\n"
     go mod tidy
@@ -420,7 +435,7 @@ show-failing-tests:
     @echo ""
 
 # Run all tests and checks (CI pipeline)
-# Runs: fmt, lint, semgrep, complexity checks, and test
+# Runs: code-fmt, code-lint, code-semgrep, complexity checks, test, and code-shellcheck
 ci:
     #!/usr/bin/env bash
     set -euo pipefail
@@ -431,12 +446,13 @@ ci:
     echo ""
     printf "\033[0;34m=== Running CI Checks ===\033[0m\n"
     START_TIME=$(date +%s)
-    just fmt
-    just lint
-    just semgrep
-    just cyclo
-    just cognit
+    just code-fmt
+    just code-lint
+    just code-semgrep
+    just code-cyclo
+    just code-cognit
     just test
+    just code-shellcheck
     END_TIME=$(date +%s)
     ELAPSED=$((END_TIME - START_TIME))
     echo ""
@@ -569,6 +585,19 @@ ci-quiet:
         printf "\033[0;32m✓ TUI tests passed\033[0m\n"
     else
         printf "\033[0;31m✗ TUI tests failed:\033[0m\n"
+        echo "$OUTPUT"
+        exit 1
+    fi
+
+    # Run ShellCheck last because scanning the shell test suite is comparatively slow.
+    if ! command -v shellcheck >/dev/null 2>&1; then
+        printf "\033[0;31m✗ ShellCheck failed: shellcheck not found - install with: brew install shellcheck\033[0m\n"
+        exit 1
+    fi
+    if OUTPUT=$(find tests -name '*.sh' -type f -print0 | sort -z | xargs -0 shellcheck {{shellcheck_flags}} 2>&1); then
+        printf "\033[0;32m✓ ShellCheck passed\033[0m\n"
+    else
+        printf "\033[0;31m✗ ShellCheck failed:\033[0m\n"
         echo "$OUTPUT"
         exit 1
     fi

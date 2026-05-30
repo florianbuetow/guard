@@ -118,7 +118,7 @@ Every feature request or bug fix must have a corresponding test ticket that bloc
 ### Workflow
 1. Create a test ticket: "Write acceptance tests for: \<feature/bug summary\>"
 2. Create the implementation ticket: "\<feature/bug summary\>"
-3. Add a dependency: implementation ticket depends on test ticket (`bd dep add <impl> <test>`)
+3. Ensure the test ticket is closed before implementation begins (implementation is blocked by test)
 4. Write the failing test first, verify it fails
 5. Close the test ticket
 6. Implement the feature/fix, verify the test passes
@@ -128,26 +128,6 @@ Every feature request or bug fix must have a corresponding test ticket that bloc
 - **No implementation without a failing test** — every implementation ticket must be blocked by a test ticket
 - **Tests must fail first** — a test ticket is only closed once the test exists and fails against current code
 - **Test describes the "what", not the "how"** — test tickets describe observable behavior to assert, not implementation details
-
-<!-- BEGIN BEADS INTEGRATION v:1 profile:minimal hash:ca08a54f -->
-## Beads Issue Tracker
-
-This project uses **bd (beads)** for issue tracking. Run `bd prime` to see full workflow context and commands.
-
-### Quick Reference
-
-```bash
-bd ready              # Find available work
-bd show <id>          # View issue details
-bd update <id> --claim  # Claim work
-bd close <id>         # Complete work
-```
-
-### Rules
-
-- Use `bd` for ALL task tracking — do NOT use TodoWrite, TaskCreate, or markdown TODO lists
-- Run `bd prime` for detailed command reference and session close protocol
-- Use `bd remember` for persistent knowledge — do NOT use MEMORY.md files
 
 ## Session Completion
 
@@ -161,7 +141,6 @@ bd close <id>         # Complete work
 4. **PUSH TO REMOTE** - This is MANDATORY:
    ```bash
    git pull --rebase
-   bd dolt push
    git push
    git status  # MUST show "up to date with origin"
    ```
@@ -174,4 +153,3 @@ bd close <id>         # Complete work
 - NEVER stop before pushing - that leaves work stranded locally
 - NEVER say "ready to push when you are" - YOU must push
 - If push fails, resolve and retry until it succeeds
-<!-- END BEADS INTEGRATION -->

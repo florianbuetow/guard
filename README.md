@@ -328,17 +328,20 @@ just test-basic
 just test-sudo
 
 # Format code and run linter
-just fmt
-just lint
+just code-fmt
+just code-lint
+
+# Run ShellCheck over shell scripts
+just code-shellcheck
 
 # Run Semgrep static analysis
-just semgrep
+just code-semgrep
 
 # Run cyclomatic complexity check
-just cyclo
+just code-cyclo
 
 # Run cognitive complexity check
-just cognit
+just code-cognit
 
 # Generate test coverage report
 just coverage
@@ -358,6 +361,7 @@ Run `just check` to verify your setup. The following tools are used by the CI pi
 
 **Optional (auto-installed or with fallbacks):**
 - `golangci-lint` - Linting (falls back to `go vet` if not installed)
+- `shellcheck` - Shell script analysis
 - `semgrep` - Security analysis
 - `gocyclo` - Cyclomatic complexity analysis
 - `gocognit` - Cognitive complexity analysis
@@ -482,4 +486,3 @@ Under the following terms:
 - **ShareAlike** — If you remix, transform, or build upon the material, you must distribute your contributions under the same license
 
 For more information, visit: https://creativecommons.org/licenses/by-nc-sa/4.0/
-
