@@ -109,6 +109,7 @@ func (s StatusBar) RenderHelp() string {
 		{"↑↓", "Navigate"},
 		{"←→", "Expand/Collapse"},
 		{"Space", "Toggle"},
+		{"Enter", "Deep Toggle"},
 		{"Tab", "Switch Panel"},
 		{"R", "Refresh"},
 		{"Q", "Quit"},

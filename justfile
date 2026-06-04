@@ -61,6 +61,8 @@ help:
     @echo ""
     @printf "\033[0;33mCI & Testing:\033[0m\n"
     @printf "  %-38s %s\n" "just test" "Format, build, install, and run all tests"
+    @printf "  %-38s %s\n" "just test-tui" "Run non-color TUI tests"
+    @printf "  %-38s %s\n" "just test-tui-color" "Run color TUI tests"
     @printf "  %-38s %s\n" "just show-failing-tests" "Run every test individually and report only failures"
     @printf "  %-38s %s\n" "just ci" "Run all checks and tests (code checks and test)"
     @printf "  %-38s %s\n" "just ci-quiet" "Run all checks and tests with minimal output"
@@ -423,8 +425,27 @@ test: build install
     export PATH="$INSTALL_BIN:$PATH"
     (cd tests && ./run-cli-tests-sequential.sh)
     (cd tests && SKIP_CLI_PREREQ=1 ./run-tui-tests-parallel.sh)
+    (cd tests && SKIP_CLI_PREREQ=1 ./run-tui-color-tests-parallel.sh)
     printf "\033[0;32m✓ All tests passed\033[0m\n"
     echo ""
+
+# Run non-color TUI tests without installing the dev binary globally
+test-tui: build
+    #!/usr/bin/env bash
+    set -e
+    cp bin/guard ./guard
+    cp bin/guard tests/guard
+    trap 'rm -f tests/guard' EXIT
+    (cd tests && SKIP_CLI_PREREQ=1 ./run-tui-tests-parallel.sh)
+
+# Run color TUI tests without installing the dev binary globally
+test-tui-color: build
+    #!/usr/bin/env bash
+    set -e
+    cp bin/guard ./guard
+    cp bin/guard tests/guard
+    trap 'rm -f tests/guard' EXIT
+    (cd tests && SKIP_CLI_PREREQ=1 ./run-tui-color-tests-parallel.sh)
 
 # Run every test individually and report only the failing ones
 show-failing-tests:
@@ -585,6 +606,14 @@ ci-quiet:
         printf "\033[0;32m✓ TUI tests passed\033[0m\n"
     else
         printf "\033[0;31m✗ TUI tests failed:\033[0m\n"
+        echo "$OUTPUT"
+        exit 1
+    fi
+
+    if OUTPUT=$(cd tests && SKIP_CLI_PREREQ=1 ./run-tui-color-tests-parallel.sh 2>&1); then
+        printf "\033[0;32m✓ TUI color tests passed\033[0m\n"
+    else
+        printf "\033[0;31m✗ TUI color tests failed:\033[0m\n"
         echo "$OUTPUT"
         exit 1
     fi

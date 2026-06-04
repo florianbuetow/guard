@@ -90,3 +90,34 @@ func (m *Manager) CollectFilesRecursive(path string) ([]string, error) {
 	}
 	return m.fs.CollectFilesRecursive(path)
 }
+
+// CollectToggleableFilesInFolder returns regular, non-symlink files eligible for
+// TUI folder toggles. It uses ReadDir so active ignore config is applied in the
+// same way as the visible file tree.
+func (m *Manager) CollectToggleableFilesInFolder(path string, recursive bool) ([]string, error) {
+	entries, err := m.ReadDir(path)
+	if err != nil {
+		return nil, err
+	}
+
+	var files []string
+	for _, entry := range entries {
+		if entry.IsLink {
+			continue
+		}
+		if entry.IsDir {
+			if recursive {
+				childFiles, err := m.CollectToggleableFilesInFolder(entry.Path, true)
+				if err != nil {
+					return nil, err
+				}
+				files = append(files, childFiles...)
+			}
+			continue
+		}
+
+		files = append(files, entry.Path)
+	}
+
+	return files, nil
+}

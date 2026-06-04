@@ -11,6 +11,7 @@ NC='\033[0m' # No Color
 
 # Get script directory
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+COLOR_TEST_MARKER="_color_"
 
 echo -e "${BLUE}========================================${NC}"
 echo -e "${BLUE}Guard TUI Sequential Test Runner${NC}"
@@ -38,14 +39,15 @@ fi
 TEST_FILES=$(find "$SCRIPT_DIR" -maxdepth 1 -name "test-*.sh" -type f | sort)
 TEST_FILES=$(echo "$TEST_FILES" | grep -v "test-assertions-and-framework.sh" | grep -v "test-guardfile-parsers.sh")
 TUI_TEST_FILES=$(echo "$TEST_FILES" | grep -i '/[^/]*tui[^/]*$' || true)
+TUI_TEST_FILES=$(echo "$TUI_TEST_FILES" | grep -v "$COLOR_TEST_MARKER" || true)
 
 if [ -z "$TUI_TEST_FILES" ]; then
-    echo -e "${RED}No TUI test files found${NC}"
+    echo -e "${RED}No non-color TUI test files found${NC}"
     exit 1
 fi
 
 test_count=$(echo "$TUI_TEST_FILES" | wc -l | tr -d ' ')
-echo -e "Found ${BLUE}${test_count}${NC} TUI test files"
+echo -e "Found ${BLUE}${test_count}${NC} non-color TUI test files"
 echo ""
 
 # Record start time

@@ -340,7 +340,7 @@ func (ft *FileTree) toggleGuard() tea.Cmd {
 	return ft.toggleFileGuard(node)
 }
 
-// toggleGuardRecursive toggles guard recursively for a folder
+// toggleGuardRecursive toggles guard recursively for a folder via Enter and aliases.
 func (ft *FileTree) toggleGuardRecursive() tea.Cmd {
 	if len(ft.flatNodes) == 0 {
 		return nil

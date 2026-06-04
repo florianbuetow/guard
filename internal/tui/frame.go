@@ -34,7 +34,8 @@ const (
 // ║                                        │                                    ║
 // ║ ...content...                          │ ...content...                      ║
 // ╠════════════════════════════════════════╧════════════════════════════════════╣
-// ║ ↑↓: Navigate  ←→: Expand/Collapse  Space: Toggle  Tab: Switch Panel  /: Search  R: Refresh  Q: Quit ║
+// ║ ↑↓: Navigate  ←→: Expand/Collapse  Space: Toggle  /: Search                                  ║
+// ║ Enter: Deep Toggle  Tab: Switch Panel  R: Refresh  Q: Quit                                    ║
 // ║                                                                                                      ║
 // ╚═════════════════════════════════════════════════════════════════════════════╝
 //

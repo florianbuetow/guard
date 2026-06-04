@@ -30,7 +30,8 @@ func ComputeFileGuardState(mgr *manager.Manager, path string) GuardState {
 
 // ComputeEffectiveFolderGuardState computes the effective guard state for a folder
 // based on the registry states of its files.
-// files is the list of files in the folder (can be immediate or recursive)
+// files is the list of files in the folder. Callers may pass an ignore-aware
+// recursive candidate list when rendering folder tree state.
 func ComputeEffectiveFolderGuardState(mgr *manager.Manager, files []string, collectionName string) GuardState {
 	if mgr == nil {
 		return GuardStateNoCollection

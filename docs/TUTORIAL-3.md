@@ -207,7 +207,8 @@ Press `Tab` to switch focus to the Collections Panel:
 ║   [G] shared.txt                       │                                    ║
 ║                                        │                                    ║
 ╠════════════════════════════════════════╧════════════════════════════════════╣
-║ ↑↓: Navigate  Tab: Switch Panel  Space: Toggle Guard  R: Refresh  Q: Quit   ║
+║ ↑↓: Navigate  ←→: Expand/Collapse  Space: Toggle  /: Search                 ║
+║ Enter: Deep Toggle  Tab: Switch Panel  R: Refresh  Q: Quit                  ║
 ╚═════════════════════════════════════════════════════════════════════════════╝
 ```
 
@@ -356,8 +357,9 @@ $ rm -rf tui-demo
 | `↑` / `↓` | Navigate files/folders | Navigate collections | N/A |
 | `←` / `→` | Collapse/Expand folders | N/A | N/A |
 | `Tab` | Switch to Collections Panel | Switch to Search (if active) or Files Panel | Switch to Files Panel |
-| `Space` | Toggle guard on file/folder | Toggle guard on collection | Type space character |
-| `Shift+Space` | Toggle guard recursively (folders) | N/A | N/A |
+| `Space` | Toggle guard on a file, or a folder's direct files | Toggle guard on collection | Type space character |
+| `Enter` | Toggle guard recursively on folders | N/A | N/A |
+| `Shift+Space` | Recursive folder toggle alias | N/A | N/A |
 | `/` | Activate search box | Activate search box | N/A |
 | `Esc` | No action | No action | Close search and clear query |
 | `R` | Refresh from disk | Refresh from disk | N/A |

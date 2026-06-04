@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# test-tui-guardignore-009.sh - Gitignored files and folders render in light blue color
+# test-tui_color_guardignore-009.sh - Gitignored files and folders render in light blue color
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/helpers-cli.sh"
@@ -12,6 +12,8 @@ find_guard_binary
 if ! tui_check_tmux; then
     exit 1
 fi
+
+tui_enable_color_assertions
 
 # ANSI 256-color code for the gitignored/light blue color.
 # This must match ColorIgnored in internal/tui/styles.go.

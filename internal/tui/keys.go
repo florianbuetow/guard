@@ -16,7 +16,7 @@ type KeyMap struct {
 
 	// Actions
 	Toggle      key.Binding // Space - toggle guard
-	ToggleAll   key.Binding // Shift+Space - toggle recursively (folders only)
+	ToggleAll   key.Binding // Enter/Shift+Space - toggle recursively (folders only)
 	SwitchPanel key.Binding // Tab - cycle focus between Files, Collections, and Search (when active)
 	Refresh     key.Binding // R - refresh/reload
 
@@ -51,8 +51,8 @@ func DefaultKeyMap() KeyMap {
 			key.WithHelp("Space", "toggle guard"),
 		),
 		ToggleAll: key.NewBinding(
-			key.WithKeys("shift+space", "ctrl+space", "ctrl+@"),
-			key.WithHelp("Shift+Space", "toggle recursive"),
+			key.WithKeys("enter", "shift+space", "ctrl+space", "ctrl+@"),
+			key.WithHelp("Enter", "deep toggle"),
 		),
 		SwitchPanel: key.NewBinding(
 			key.WithKeys("tab"),
@@ -98,6 +98,6 @@ func (k KeyMap) StatusBarHelp() string {
 func (k KeyMap) StatusBarHelpLines() []string {
 	return []string{
 		"↑↓: Navigate  ←→: Expand/Collapse  Space: Toggle  /: Search",
-		"Tab: Switch Panel  R: Refresh  Q: Quit",
+		"Enter: Deep Toggle  Tab: Switch Panel  R: Refresh  Q: Quit",
 	}
 }
