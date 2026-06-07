@@ -676,8 +676,13 @@ assert_contains() {
 # Creates: test_XXXXXX/ directory
 # Sets: TEST_DIR variable
 setup_test_env() {
-    # Create temporary test directory
-    TEST_DIR=$(mktemp -d "${TMPDIR:-/tmp}/guard_test.XXXXXX")
+    # Create the test workspace inside the project so files inherit the current
+    # user's group. Guard's disable path restores a file's original group, which
+    # a non-root user can only do for groups they belong to.
+    local project_tmp
+    project_tmp="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/.tmp"
+    mkdir -p "$project_tmp"
+    TEST_DIR=$(mktemp -d "$project_tmp/guard_test.XXXXXX")
 
     # Save original directory
     ORIGINAL_DIR=$(pwd)

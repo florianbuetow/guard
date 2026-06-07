@@ -43,6 +43,7 @@ Only use `just install` when you intentionally want to update the system-wide bi
 - TUI tests use tmux to spawn sessions, send keystrokes, capture screen output, and assert content
 - Each test creates its own temp directory and cleans up after itself
 - Always run `just test` or `just ci-quiet` to verify changes before claiming they work
+- **Tests in `tests/` are acceptance tests — do NOT modify existing test files.** Add new test files to cover new or additional requirements instead.
 
 ### Writing tests
 - CLI tests: use `assert_output_contains`, `assert_exit_code`, `assert_file_mode` etc. from `helpers-cli.sh`
@@ -117,7 +118,7 @@ Every feature request or bug fix must have a corresponding test ticket that bloc
 ### Workflow
 1. Create a test ticket: "Write acceptance tests for: \<feature/bug summary\>"
 2. Create the implementation ticket: "\<feature/bug summary\>"
-3. Add a dependency: implementation ticket depends on test ticket (`bd dep add <impl> <test>`)
+3. Ensure the test ticket is closed before implementation begins (implementation is blocked by test)
 4. Write the failing test first, verify it fails
 5. Close the test ticket
 6. Implement the feature/fix, verify the test passes
@@ -127,3 +128,28 @@ Every feature request or bug fix must have a corresponding test ticket that bloc
 - **No implementation without a failing test** — every implementation ticket must be blocked by a test ticket
 - **Tests must fail first** — a test ticket is only closed once the test exists and fails against current code
 - **Test describes the "what", not the "how"** — test tickets describe observable behavior to assert, not implementation details
+
+## Session Completion
+
+**When ending a work session**, you MUST complete ALL steps below. Work is NOT complete until `git push` succeeds.
+
+**MANDATORY WORKFLOW:**
+
+1. **File issues for remaining work** - Create issues for anything that needs follow-up
+2. **Run quality gates** (if code changed) - Tests, linters, builds
+3. **Update issue status** - Close finished work, update in-progress items
+4. **PUSH TO REMOTE** - This is MANDATORY:
+   ```bash
+   git pull --rebase
+   git push
+   git status  # MUST show "up to date with origin"
+   ```
+5. **Clean up** - Clear stashes, prune remote branches
+6. **Verify** - All changes committed AND pushed
+7. **Hand off** - Provide context for next session
+
+**CRITICAL RULES:**
+- Work is NOT complete until `git push` succeeds
+- NEVER stop before pushing - that leaves work stranded locally
+- NEVER say "ready to push when you are" - YOU must push
+- If push fails, resolve and retry until it succeeds

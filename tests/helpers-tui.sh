@@ -25,6 +25,11 @@ TUI_SCREENSHOT_ENABLED=true     # Set to false to disable screenshots
 TUI_LAST_SCREENSHOT=""          # Path to the most recent screenshot (for error messages)
 TUI_CURRENT_TEST=""             # Name of the currently running test
 
+# Non-color TUI tests run with color disabled by default. Tests that assert
+# color ANSI escape codes must have _color_ in the filename and call
+# tui_enable_color_assertions before tui_start.
+export NO_COLOR="${NO_COLOR:-1}"
+
 # ============================================================================
 # Screenshot/Logging Functions
 # ============================================================================
@@ -66,7 +71,13 @@ tui_screenshot() {
     # Also capture with ANSI codes for color debugging
     {
         echo "=== Screenshot $TUI_SCREENSHOT_COUNTER (with ANSI): $description ==="
+        echo "Timestamp: $(date '+%Y-%m-%d %H:%M:%S')"
+        echo "Test: $TUI_CURRENT_TEST"
+        echo "=================================================="
+        echo ""
         tmux capture-pane -t "$TUI_SESSION" -p -e 2>/dev/null || echo "[Session not available]"
+        echo ""
+        echo "=== End Screenshot ==="
     } > "${filepath%.txt}_ansi.txt"
 }
 
@@ -159,6 +170,24 @@ _tui_create_session() {
     if ! tmux new-session -d -s "$TUI_SESSION" -x "$width" -y "$height" 2>/dev/null; then
         tui_fail "Failed to create tmux session ($context)"
     fi
+
+    if [ -n "${NO_COLOR+x}" ]; then
+        tmux send-keys -t "$TUI_SESSION" "export NO_COLOR='$NO_COLOR'" Enter
+    else
+        tmux send-keys -t "$TUI_SESSION" "unset NO_COLOR" Enter
+    fi
+    if [ -n "${CLICOLOR_FORCE+x}" ]; then
+        tmux send-keys -t "$TUI_SESSION" "export CLICOLOR_FORCE='$CLICOLOR_FORCE'" Enter
+    else
+        tmux send-keys -t "$TUI_SESSION" "unset CLICOLOR_FORCE" Enter
+    fi
+    if [ -n "${COLORTERM+x}" ]; then
+        tmux send-keys -t "$TUI_SESSION" "export COLORTERM='$COLORTERM'" Enter
+    fi
+    if [ -n "${TERM+x}" ]; then
+        tmux send-keys -t "$TUI_SESSION" "export TERM='$TERM'" Enter
+    fi
+    sleep 0.2
 
     # Change to current working directory using short symlink to avoid path wrapping
     local short_link="/tmp/_gt$$"
@@ -308,6 +337,15 @@ tui_capture_ansi() {
         tui_fail "Failed to capture screen (ANSI) - tmux session may have died"
     fi
     echo "$output"
+}
+
+# Enable color output for tests that assert color ANSI escape codes.
+# Must be called before tui_start so the guard TUI process inherits it.
+tui_enable_color_assertions() {
+    unset NO_COLOR
+    export CLICOLOR_FORCE=1
+    export TERM="${TERM:-xterm-256color}"
+    export COLORTERM="${COLORTERM:-truecolor}"
 }
 
 # Get captured stderr content

@@ -48,6 +48,12 @@ func (fs *FileSystem) FileExists(path string) bool {
 	return false
 }
 
+// WriteFile writes data to a file with the given permissions.
+// The file is created if it does not exist, or truncated if it does.
+func (fs *FileSystem) WriteFile(path string, data []byte, perm os.FileMode) error {
+	return os.WriteFile(path, data, perm)
+}
+
 // GetFileInfo retrieves the current file mode, owner, and group for a file.
 // Returns an error if the file doesn't exist or if owner/group lookup fails.
 func (fs *FileSystem) GetFileInfo(path string) (mode os.FileMode, owner, group string, err error) {

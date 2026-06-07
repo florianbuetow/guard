@@ -13,6 +13,7 @@ type FileNode struct {
 	Path       string
 	IsDir      bool
 	IsSymlink  bool
+	IsIgnored  bool
 	Expanded   bool
 	Depth      int
 	GuardState GuardState
@@ -84,6 +85,7 @@ func populateChildren(node *FileNode, mgr *manager.Manager) error {
 
 	for i, entry := range entries {
 		child := NewFileNode(entry.Name, entry.Path, entry.IsDir, entry.IsLink, node.Depth+1, node)
+		child.IsIgnored = entry.IsIgnored
 		child.IsLastChild = i == len(entries)-1
 
 		// Update ancestor tracking
@@ -92,8 +94,12 @@ func populateChildren(node *FileNode, mgr *manager.Manager) error {
 		}
 		child.AncestorLast = append(child.AncestorLast, child.IsLastChild)
 
-		// Compute guard state for files
-		if !entry.IsDir && !entry.IsLink {
+		if entry.IsDir && !entry.IsLink {
+			files, err := mgr.CollectToggleableFilesInFolder(entry.Path, true)
+			if err == nil {
+				child.GuardState = ComputeEffectiveFolderGuardState(mgr, files, "")
+			}
+		} else if !entry.IsDir && !entry.IsLink {
 			child.GuardState = ComputeFileGuardState(mgr, entry.Path)
 		}
 
@@ -271,18 +277,9 @@ func UpdateGuardStates(root *FileNode, mgr *manager.Manager) {
 
 func updateNodeGuardState(node *FileNode, mgr *manager.Manager) {
 	if node.IsDir {
-		// Compute folder guard state based on immediate children
 		var files []string
-		if len(node.Children) > 0 {
-			// Folder is expanded - use loaded children
-			for _, child := range node.Children {
-				if !child.IsDir && !child.IsSymlink {
-					files = append(files, child.Path)
-				}
-			}
-		} else if mgr != nil {
-			// Folder is collapsed - get files from disk
-			diskFiles, err := mgr.CollectImmediateFiles(node.Path)
+		if mgr != nil {
+			diskFiles, err := mgr.CollectToggleableFilesInFolder(node.Path, true)
 			if err == nil {
 				files = diskFiles
 			}

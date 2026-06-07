@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# test-tui-active-pane-indicator-001.sh - ACTIVE PANE INDICATOR
+# test-tui_color_active-pane-indicator-001.sh - ACTIVE PANE INDICATOR COLORS
 # Tests that the selection highlight (blue background) only appears
 # in the focused pane, not in both panes simultaneously.
 #
@@ -9,7 +9,7 @@
 # - guard binary must be built
 #
 # Usage:
-#   ./tests/test-tui-active-pane-indicator-001.sh
+#   ./tests/test-tui_color_active-pane-indicator-001.sh
 
 # Source helpers
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -24,6 +24,8 @@ find_guard_binary
 if ! tui_check_tmux; then
     exit 1
 fi
+
+tui_enable_color_assertions
 
 # ANSI code for blue background (basic ANSI SGR 44, lipgloss Color "4")
 BLUE_BG="[44m"

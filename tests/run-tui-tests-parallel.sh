@@ -18,9 +18,37 @@ NC='\033[0m' # No Color
 
 # Get script directory
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+COLOR_TEST_MARKER="_color_"
+TUI_COLOR_TEST_MODE="${TUI_COLOR_TEST_MODE:-exclude}"
+
+case "$TUI_COLOR_TEST_MODE" in
+    include)
+        SUITE_NAME="Guard TUI Color Parallel Test Runner"
+        SUITE_LABEL="color TUI"
+        unset NO_COLOR
+        export CLICOLOR_FORCE=1
+        export TERM="${TERM:-xterm-256color}"
+        export COLORTERM="${COLORTERM:-truecolor}"
+        ;;
+    exclude)
+        SUITE_NAME="Guard TUI Parallel Test Runner"
+        SUITE_LABEL="non-color TUI"
+        export NO_COLOR="${NO_COLOR:-1}"
+        ;;
+    *)
+        echo -e "${RED}Error: TUI_COLOR_TEST_MODE must be 'include' or 'exclude'${NC}"
+        exit 1
+        ;;
+esac
+
+# Wipe the shared test workspace before the run and on exit (covers failures
+# and interrupts) so no leftover fixtures accumulate or poison later tooling.
+PROJECT_TMP="$SCRIPT_DIR/../.tmp"
+rm -rf "$PROJECT_TMP"
+trap 'rm -rf "$PROJECT_TMP"' EXIT INT TERM
 
 echo -e "${BLUE}========================================${NC}"
-echo -e "${BLUE}Guard TUI Parallel Test Runner${NC}"
+echo -e "${BLUE}${SUITE_NAME}${NC}"
 echo -e "${BLUE}========================================${NC}"
 echo ""
 
@@ -56,9 +84,14 @@ fi
 TEST_FILES=$(find "$SCRIPT_DIR" -maxdepth 1 -name "test-*.sh" -type f | sort)
 TEST_FILES=$(echo "$TEST_FILES" | grep -v "test-assertions-and-framework.sh" | grep -v "test-guardfile-parsers.sh")
 TUI_TEST_FILES=$(echo "$TEST_FILES" | grep -i '/[^/]*tui[^/]*$' || true)
+if [ "$TUI_COLOR_TEST_MODE" = "include" ]; then
+    TUI_TEST_FILES=$(echo "$TUI_TEST_FILES" | grep "$COLOR_TEST_MARKER" || true)
+else
+    TUI_TEST_FILES=$(echo "$TUI_TEST_FILES" | grep -v "$COLOR_TEST_MARKER" || true)
+fi
 
 if [ -z "$TUI_TEST_FILES" ]; then
-    echo -e "${RED}No TUI test files found${NC}"
+    echo -e "${RED}No ${SUITE_LABEL} test files found${NC}"
     exit 1
 fi
 
@@ -69,7 +102,7 @@ while IFS= read -r line; do
 done <<< "$TUI_TEST_FILES"
 
 test_count=${#ALL_TESTS[@]}
-echo -e "Found ${BLUE}${test_count}${NC} TUI test files (concurrency: ${CONCURRENCY})"
+echo -e "Found ${BLUE}${test_count}${NC} ${SUITE_LABEL} test files (concurrency: ${CONCURRENCY})"
 echo ""
 
 # Create temp directory for per-test output logs

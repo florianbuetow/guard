@@ -150,6 +150,44 @@ func (s *Security) ToDisplayPath(absPath string) string {
 	return relPath
 }
 
+// ToRelativePath converts a path to a relative path from the guardfile directory.
+// The path is resolved to absolute and validated before conversion.
+func (s *Security) ToRelativePath(path string) (string, error) {
+	absPath, err := filepath.Abs(path)
+	if err != nil {
+		return "", fmt.Errorf("failed to resolve path: %w", err)
+	}
+	if err := s.validatePath(absPath); err != nil {
+		return "", err
+	}
+	return s.toRelativePath(absPath)
+}
+
+// GetGuardfileDir returns the absolute guardfile directory used by this security instance.
+func (s *Security) GetGuardfileDir() string {
+	return s.guardfileDir
+}
+
+// GetUseGitignore returns whether .gitignore rules are enabled.
+func (s *Security) GetUseGitignore() bool {
+	return s.registry.GetUseGitignore()
+}
+
+// GetUseGuardignore returns whether .guardignore rules are enabled.
+func (s *Security) GetUseGuardignore() bool {
+	return s.registry.GetUseGuardignore()
+}
+
+// SetUseGitignore sets whether .gitignore rules are enabled.
+func (s *Security) SetUseGitignore(enabled bool) {
+	s.registry.SetUseGitignore(enabled)
+}
+
+// SetUseGuardignore sets whether .guardignore rules are enabled.
+func (s *Security) SetUseGuardignore(enabled bool) {
+	s.registry.SetUseGuardignore(enabled)
+}
+
 // validateAllRegisteredPaths validates all file paths in the registry.
 // Called after loading from disk to detect tampering.
 func (s *Security) validateAllRegisteredPaths() error {

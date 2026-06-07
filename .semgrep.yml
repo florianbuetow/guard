@@ -23,3 +23,79 @@ rules:
       exclude:
         - "**/*_test.go"
         - "**/internal/security/security.go"
+
+  - id: tui-color-test-must-enable-color-output
+    languages:
+      - generic
+    message: |
+      This TUI test filename contains _color_, so it is part of the color
+      assertion suite. Color TUI tests must explicitly enable color output before
+      launching guard -i.
+
+      Fix:
+      - Source tests/helpers-tui.sh
+      - Call tui_enable_color_assertions before tui_start
+
+      Why:
+      The normal TUI suite runs with NO_COLOR=1. Without this opt-in, Lip Gloss
+      suppresses color escape codes and assertions such as [44m or 38;5;117 fail
+      for the wrong reason.
+    severity: ERROR
+    pattern-regex: '(?s)\A(?!.*\btui_enable_color_assertions\b).*\z'
+    paths:
+      include:
+        - "/tests/test-*tui*_color_*.sh"
+
+  - id: tui-non-color-test-must-not-enable-color-output
+    languages:
+      - generic
+    message: |
+      This is a non-color TUI test because its filename does not contain _color_.
+      Non-color TUI tests must run with NO_COLOR=1 and must not enable color
+      output inside the test file.
+
+      Fix:
+      - If this test asserts color escape codes, rename it so the filename
+        contains _color_ and call tui_enable_color_assertions before tui_start.
+      - If this test does not assert colors, remove color setup such as
+        tui_enable_color_assertions, unset NO_COLOR, or CLICOLOR_FORCE.
+
+      Why:
+      Color-sensitive assertions need the dedicated color runner. Keeping
+      non-color tests under NO_COLOR=1 prevents accidental dependence on terminal
+      color settings.
+    severity: ERROR
+    pattern-either:
+      - pattern-regex: '\btui_enable_color_assertions\b'
+      - pattern-regex: '\bunset\s+NO_COLOR\b'
+      - pattern-regex: '\bCLICOLOR_FORCE\s*='
+    paths:
+      include:
+        - "/tests/test-*tui*.sh"
+      exclude:
+        - "/tests/test-*tui*_color_*.sh"
+
+  - id: tui-non-color-test-must-use-no-color-setup
+    languages:
+      - generic
+    message: |
+      This is a non-color TUI test because its filename does not contain _color_.
+      Non-color TUI tests must use the shared TUI helper setup, which sets
+      NO_COLOR=1 by default.
+
+      Fix:
+      - Source tests/helpers-tui.sh near the top of the test file.
+      - If this test needs color assertions instead, rename it so the filename
+        contains _color_ and call tui_enable_color_assertions before tui_start.
+
+      Why:
+      The normal TUI suite intentionally runs with color disabled so tests do not
+      accidentally depend on terminal color settings. Color-sensitive assertions
+      belong in the dedicated _color_ suite.
+    severity: ERROR
+    pattern-regex: '(?s)\A(?!.*\bhelpers-tui\.sh\b).*\z'
+    paths:
+      include:
+        - "/tests/test-*tui*.sh"
+      exclude:
+        - "/tests/test-*tui*_color_*.sh"

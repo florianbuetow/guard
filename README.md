@@ -28,6 +28,8 @@ Guard provides you the ability to toggle the `guard` of individual `files`, defi
 ║ ▶ docs                                 │                              ║
 ║   [-] README.md                        │                              ║
 ║   [ ] notes.txt                        │                              ║
+║ ▶ vendor/           (light blue)       │                              ║
+║   [g] dep.go        (light blue)       │                              ║
 ╠════════════════════════════════════════╧══════════════════════════════╣
 ║  Search: main                                                         ║
 ╠═══════════════════════════════════════════════════════════════════════╣
@@ -37,6 +39,8 @@ Guard provides you the ability to toggle the `guard` of individual `files`, defi
 ```
 
 Press `/` to activate fuzzy search and instantly filter the file tree. Press `Esc` to clear and close the search box. Use `Tab` to cycle focus between panels and the search box.
+
+Items that are gitignored but still visible (because they are guard-tracked) appear in light blue with a lowercase `[g]` indicator, so you can distinguish them from normal files at a glance.
 
 Follow the onboarding guide below to make `guard` your own tool.
 
@@ -52,6 +56,36 @@ The point is that the proof of understanding should travel with the project itse
 2. It changes the files `group` and `owner` and removes `write` permissions to guard a file against modifications by the AI.
 3. It sets the immutable flag so that even the owner of the file cannot change its permissions without sudo.
 4. It restores the original file settings when you are done.
+
+## Filtering with .guardignore and .gitignore
+
+Guard can filter files using `.gitignore` and `.guardignore` files. Both use standard [gitignore syntax](https://git-scm.com/docs/gitignore), including negation patterns (`!`). By default, both are enabled.
+
+**How rules are evaluated:**
+
+Within each directory, `.gitignore` is read first, then `.guardignore` is appended — they are treated as one combined rule set. Directories are stacked from root to leaf, and the **last matching rule wins**.
+
+For a file at `src/vendor/file.go`, rules are evaluated in this order:
+
+```
+1. /.gitignore
+2. /.guardignore            ← can negate rules from 1
+3. /src/.gitignore          ← can negate rules from 1–2
+4. /src/.guardignore        ← can negate rules from 1–3
+5. /src/vendor/.gitignore   ← can negate rules from 1–4
+6. /src/vendor/.guardignore ← can negate rules from 1–5
+```
+
+This means `.guardignore` can un-ignore files that `.gitignore` would hide. For example, if your `.gitignore` contains `vendor/` but you still want Guard to manage files inside it, add `!vendor/` to your `.guardignore`.
+
+**Configuration:**
+
+```bash
+guard config set use_gitignore <true|false>      # default: true
+guard config set use_guardignore <true|false>     # default: true
+```
+
+When both are disabled, no filtering is applied and all files are visible. Registered (guard-tracked) files are always shown regardless of ignore rules.
 
 # Star This Repository
 
@@ -179,6 +213,12 @@ guard config set owner <owner>
 
 # Update guard group only
 guard config set group <group>
+
+# Enable/disable .gitignore-based filtering in the TUI
+guard config set use_gitignore <true|false>
+
+# Enable/disable .guardignore-based filtering in the TUI
+guard config set use_guardignore <true|false>
 ```
 
 ## File Operations
@@ -294,17 +334,20 @@ just test-basic
 just test-sudo
 
 # Format code and run linter
-just fmt
-just lint
+just code-fmt
+just code-lint
+
+# Run ShellCheck over shell scripts
+just code-shellcheck
 
 # Run Semgrep static analysis
-just semgrep
+just code-semgrep
 
 # Run cyclomatic complexity check
-just cyclo
+just code-cyclo
 
 # Run cognitive complexity check
-just cognit
+just code-cognit
 
 # Generate test coverage report
 just coverage
@@ -324,6 +367,7 @@ Run `just check` to verify your setup. The following tools are used by the CI pi
 
 **Optional (auto-installed or with fallbacks):**
 - `golangci-lint` - Linting (falls back to `go vet` if not installed)
+- `shellcheck` - Shell script analysis
 - `semgrep` - Security analysis
 - `gocyclo` - Cyclomatic complexity analysis
 - `gocognit` - Cognitive complexity analysis
