@@ -61,6 +61,7 @@ help:
     @echo ""
     @printf "\033[0;33mCI & Testing:\033[0m\n"
     @printf "  %-38s %s\n" "just test" "Format, build, install, and run all tests"
+    @printf "  %-38s %s\n" "just test-unit" "Run unit tests"
     @printf "  %-38s %s\n" "just test-tui" "Run non-color TUI tests"
     @printf "  %-38s %s\n" "just test-tui-color" "Run color TUI tests"
     @printf "  %-38s %s\n" "just show-failing-tests" "Run every test individually and report only failures"
@@ -428,6 +429,14 @@ test: build install
     (cd tests && SKIP_CLI_PREREQ=1 ./run-tui-color-tests-parallel.sh)
     printf "\033[0;32m✓ All tests passed\033[0m\n"
     echo ""
+
+# Run Go unit tests only
+test-unit:
+    @echo ""
+    @printf "\033[0;34m=== Running Go unit tests ===\033[0m\n"
+    @go test -v ./...
+    @printf "\033[0;32m✓ Unit tests passed\033[0m\n"
+    @echo ""
 
 # Run non-color TUI tests without installing the dev binary globally
 test-tui: build
