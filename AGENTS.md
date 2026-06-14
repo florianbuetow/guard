@@ -10,7 +10,7 @@ Guard is a Go CLI/TUI tool that protects files from unwanted modifications by AI
 just build          # Build binary to ./bin/guard
 just install        # Install to $GOPATH/bin (DO NOT use during development — see warning below)
 just test           # Format, build, install, run all tests
-just ci-quiet       # Full CI pipeline with minimal output
+just ci             # Full CI pipeline with minimal output
 just fmt            # Format Go code
 just lint           # Run linter (golangci-lint or go vet fallback)
 just clean          # Remove build artifacts
@@ -42,7 +42,7 @@ Only use `just install` when you intentionally want to update the system-wide bi
 - Test files follow the pattern `test-<category>-<number>.sh`
 - TUI tests use tmux to spawn sessions, send keystrokes, capture screen output, and assert content
 - Each test creates its own temp directory and cleans up after itself
-- Always run `just test` or `just ci-quiet` to verify changes before claiming they work
+- Always run `just test` or `just ci` to verify changes before claiming they work
 - **Tests in `tests/` are acceptance tests — do NOT modify existing test files.** Add new test files to cover new or additional requirements instead.
 
 ### Writing tests
