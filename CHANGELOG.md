@@ -26,6 +26,7 @@ This repository does not currently use release tags, so entries are grouped by d
 
 ### Fixed
 
+- Fixed recursive TUI folder toggles to respect ignore scope, skipping gitignored and guardignored files.
 - Fixed toggle guard on gitignored folders to only affect already-registered files, skipping ignored unregistered files.
 - Fixed `ReadDir` to show gitignored directories that contain registered descendants instead of hiding them entirely.
 - Fixed `.guardfile` appearing in the TUI when it is gitignored and `use_gitignore` is enabled.
