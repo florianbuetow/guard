@@ -9,6 +9,8 @@ This repository does not currently use release tags, so entries are grouped by d
 
 ### Added
 
+- Added `guard init` validation that warns when the configured owner or group does not exist.
+- Added a centered TUI error overlay surfacing failed guard toggles instead of silently showing `[-]`.
 - Added `.guardignore` support: a `.gitignore`-style file for custom ignore patterns independent of git, parsed using the same gitignore pattern semantics (via `go-git`).
 - Added `use_gitignore` and `use_guardignore` config flags to the registry, controlling whether `.gitignore` and `.guardignore` rules are applied when filtering the TUI file tree. Both default to `true`.
 - Added `guard config set use_gitignore <true|false>` and `guard config set use_guardignore <true|false>` CLI commands.
@@ -26,6 +28,7 @@ This repository does not currently use release tags, so entries are grouped by d
 
 ### Fixed
 
+- Fixed recursive TUI folder toggles to respect ignore scope, skipping gitignored and guardignored files.
 - Fixed toggle guard on gitignored folders to only affect already-registered files, skipping ignored unregistered files.
 - Fixed `ReadDir` to show gitignored directories that contain registered descendants instead of hiding them entirely.
 - Fixed `.guardfile` appearing in the TUI when it is gitignored and `use_gitignore` is enabled.
@@ -33,6 +36,7 @@ This repository does not currently use release tags, so entries are grouped by d
 
 ### Changed
 
+- Renamed `just ci` to `ci-verbose` and `ci-quiet` to `ci`, making the quiet pipeline the default.
 - Extracted `LoadRegistry` boilerplate from 14 command files (26 call sites) into a single `PersistentPreRunE` in `main.go`, passing the manager via command context.
 - Replaced `Manager.GetFileSystem().CheckFilesExist()` calls in `enable.go`, `disable.go`, and `toggle.go` with `Manager.CheckFilesExist()`, removing the leaked filesystem accessor.
 - Replaced `matchKeyBinding` with the existing `matchKey` helper in `CollectionTree`, removing a redundant function and an unused import.

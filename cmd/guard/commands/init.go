@@ -131,6 +131,8 @@ Examples:
 			fmt.Printf("  Mode:  %s\n", mode)
 			fmt.Printf("  Owner: %s\n", owner)
 			fmt.Printf("  Group: %s\n", group)
+
+			printWarnings(mgr.GetWarnings())
 		},
 	}
 }

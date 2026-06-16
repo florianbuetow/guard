@@ -85,6 +85,13 @@ func (m *Manager) clearGuardfileImmutableFlag() error {
 // InitializeRegistry creates a new registry with the specified defaults.
 // If overwrite is false and the file exists, returns an error.
 func (m *Manager) InitializeRegistry(mode, owner, group string, overwrite bool) error {
+	if owner != "" && !m.fs.UserExists(owner) {
+		m.AddWarning(NewWarning(WarningGeneric, fmt.Sprintf("owner %q does not exist on this system", owner)))
+	}
+	if group != "" && !m.fs.GroupExists(group) {
+		m.AddWarning(NewWarning(WarningGeneric, fmt.Sprintf("group %q does not exist on this system", group)))
+	}
+
 	defaults := &security.RegistryDefaults{
 		GuardMode:  mode,
 		GuardOwner: owner,

@@ -204,6 +204,26 @@ func (fs *FileSystem) Chgrp(path string, group string) error {
 	return nil
 }
 
+// UserExists reports whether owner (a username or numeric UID) exists on the system.
+func (fs *FileSystem) UserExists(owner string) bool {
+	if isNumeric(owner) {
+		_, err := user.LookupId(owner)
+		return err == nil
+	}
+	_, err := user.Lookup(owner)
+	return err == nil
+}
+
+// GroupExists reports whether group (a group name or numeric GID) exists on the system.
+func (fs *FileSystem) GroupExists(group string) bool {
+	if isNumeric(group) {
+		_, err := user.LookupGroupId(group)
+		return err == nil
+	}
+	_, err := user.LookupGroup(group)
+	return err == nil
+}
+
 // CheckFilesExist checks which files exist and which are missing.
 // Returns two slices: existing files and missing files.
 func (fs *FileSystem) CheckFilesExist(paths []string) (existing, missing []string) {

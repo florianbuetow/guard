@@ -61,11 +61,12 @@ help:
     @echo ""
     @printf "\033[0;33mCI & Testing:\033[0m\n"
     @printf "  %-38s %s\n" "just test" "Format, build, install, and run all tests"
+    @printf "  %-38s %s\n" "just test-unit" "Run unit tests"
     @printf "  %-38s %s\n" "just test-tui" "Run non-color TUI tests"
     @printf "  %-38s %s\n" "just test-tui-color" "Run color TUI tests"
     @printf "  %-38s %s\n" "just show-failing-tests" "Run every test individually and report only failures"
-    @printf "  %-38s %s\n" "just ci" "Run all checks and tests (code checks and test)"
-    @printf "  %-38s %s\n" "just ci-quiet" "Run all checks and tests with minimal output"
+    @printf "  %-38s %s\n" "just ci" "Run all checks and tests with minimal output"
+    @printf "  %-38s %s\n" "just ci-verbose" "Run all checks and tests (code checks and test)"
     @echo ""
 
 # Check prerequisites
@@ -88,7 +89,7 @@ check:
     @printf "\033[0;33mChecking optional dependencies...\033[0m\n"
     @echo ""
     @command -v golangci-lint >/dev/null 2>&1 && printf "\033[0;32m✓ golangci-lint (optional)\033[0m\n" || printf "\033[0;33m⚠ golangci-lint not found (optional - will use go vet instead)\033[0m\n"
-    @command -v shellcheck >/dev/null 2>&1 && printf "\033[0;32m✓ shellcheck (optional)\033[0m\n" || printf "\033[0;33m⚠ shellcheck not found (optional - required for just code-shellcheck/ci)\033[0m\n"
+    @command -v shellcheck >/dev/null 2>&1 && printf "\033[0;32m✓ shellcheck (optional)\033[0m\n" || printf "\033[0;33m⚠ shellcheck not found (optional - required for just code-shellcheck/ci-verbose)\033[0m\n"
     @command -v semgrep >/dev/null 2>&1 && printf "\033[0;32m✓ semgrep (optional)\033[0m\n" || printf "\033[0;33m⚠ semgrep not found (optional - install with: pip3 install semgrep)\033[0m\n"
     @command -v gocyclo >/dev/null 2>&1 && printf "\033[0;32m✓ gocyclo (optional)\033[0m\n" || printf "\033[0;33m⚠ gocyclo not found (optional - will be auto-installed when needed)\033[0m\n"
     @command -v gocognit >/dev/null 2>&1 && printf "\033[0;32m✓ gocognit (optional)\033[0m\n" || printf "\033[0;33m⚠ gocognit not found (optional - will be auto-installed when needed)\033[0m\n"
@@ -429,6 +430,14 @@ test: build install
     printf "\033[0;32m✓ All tests passed\033[0m\n"
     echo ""
 
+# Run Go unit tests only
+test-unit:
+    @echo ""
+    @printf "\033[0;34m=== Running Go unit tests ===\033[0m\n"
+    @go test -v ./...
+    @printf "\033[0;32m✓ Unit tests passed\033[0m\n"
+    @echo ""
+
 # Run non-color TUI tests without installing the dev binary globally
 test-tui: build
     #!/usr/bin/env bash
@@ -455,9 +464,9 @@ show-failing-tests:
     ./tests/show-failing-tests.sh
     @echo ""
 
-# Run all tests and checks (CI pipeline)
+# Run all tests and checks (CI pipeline, verbose output)
 # Runs: code-fmt, code-lint, code-semgrep, complexity checks, test, and code-shellcheck
-ci:
+ci-verbose:
     #!/usr/bin/env bash
     set -euo pipefail
     export GOCACHE="${GOCACHE:-/tmp/go-build-cache}"
@@ -483,7 +492,7 @@ ci:
 
 # Run all tests and checks with minimal output
 # Only shows passed checks and error messages on failure
-ci-quiet:
+ci:
     #!/usr/bin/env bash
     set -euo pipefail
     # Clear the shared test workspace so stale fixtures can't poison tooling.

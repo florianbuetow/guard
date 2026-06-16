@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"errors"
 	"strings"
 
 	"github.com/charmbracelet/bubbles/key"
@@ -368,9 +369,17 @@ func (ft *FileTree) toggleFileGuard(node *FileNode) tea.Cmd {
 		guard = status.Guard
 	}
 
-	// Use manager's ToggleFiles to toggle guard and apply filesystem permissions
+	// Use manager's ToggleFiles to toggle guard and apply filesystem permissions.
+	// Clear first so HasErrors() reflects only this toggle: the manager is
+	// long-lived in the TUI and ToggleFiles records failures via AddError.
+	ft.mgr.ClearErrors()
 	if err := ft.mgr.ToggleFiles([]string{node.Path}); err != nil {
 		return func() tea.Msg { return ErrorMsg{Err: err} }
+	}
+	if ft.mgr.HasErrors() {
+		return func() tea.Msg {
+			return ErrorMsg{Err: errors.New(strings.Join(ft.mgr.GetErrors(), "\n"))}
+		}
 	}
 
 	// Update node state
