@@ -279,11 +279,9 @@ func (a App) View() string {
 		searchLine,
 	)
 
-	// Overlay error modal if visible
+	// Composite the error modal as a centered overlay when visible.
 	if a.errorModal.IsVisible() {
-		// For simplicity, just append the modal
-		// A proper implementation would overlay it
-		content += "\n" + a.errorModal.View()
+		content = a.errorModal.Overlay(content)
 	}
 
 	return content
